@@ -1,7 +1,6 @@
-from fastapi import FastAPI
+from app import create_app, socketio
 
-app = FastAPI(title="DRS Platform API")
+app = create_app()
 
-@app.get("/")
-def root():
-    return {"status": "OK"}
+if __name__ == "__main__":
+    socketio.run(app, debug=True)
