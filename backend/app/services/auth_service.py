@@ -40,3 +40,16 @@ def create_session(user):
 
 def delete_session(session_id):
     redis_client.delete(f"session:{session_id}")
+
+
+# WRAPPER FUNKCIJE KOJE RUTE OČEKUJU
+def login_user(email, password):
+    user = authenticate_user(email, password)
+    if not user:
+        return None, None
+    session_id = create_session(user)
+    return user, session_id
+
+
+def logout_user(session_id):
+    delete_session(session_id)

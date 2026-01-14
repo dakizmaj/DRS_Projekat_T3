@@ -1,27 +1,36 @@
-from flask import session, jsonify
-from functools import wraps
+from flask import Blueprint, request
+from app.services.user_service import (
+    create_user,
+    get_all_users,
+    delete_user,
+    update_profile
+)
+from app.utils.decorators import login_required, admin_required
 
-def login_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "Unauthorized"}), 401
-        return f(*args, **kwargs)
-    return wrapper
+user_bp = Blueprint("users", __name__, url_prefix="/users")
 
-def role_required(role):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            if session.get("role") != role:
-                return jsonify({"error": "Forbidden"}), 403
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
-    
-def admin_required(f):
-    def wrapper(*args, **kwargs):
-        if session.get("role") != "admin":
-            return jsonify({"error": "Forbidden"}), 403
-        return f(*args, **kwargs)
-    return wrapper
+
+@user_bp.route("/", methods=["POST"])
+@admin_required
+def create():
+    data = request.get_json()
+    return create_user(data)
+
+
+@user_bp.route("/", methods=["GET"])
+@admin_required
+def list_users():
+    return get_all_users()
+
+
+@user_bp.route("/<int:user_id>", methods=["DELETE"])
+@admin_required
+def remove(user_id):
+    return delete_user(user_id)
+
+
+@user_bp.route("/<int:user_id>", methods=["PUT"])
+@login_required
+def update(user_id):
+    data = request.get_json()
+    return update_profile(user_id, data)

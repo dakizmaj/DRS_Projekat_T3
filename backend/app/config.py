@@ -2,7 +2,11 @@ import os
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "secret")
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL",
+        "sqlite:///app.db"
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     SESSION_TYPE = "redis"
@@ -16,3 +20,4 @@ class Config:
     MAIL_USE_TLS = True
     MAIL_USERNAME = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+

@@ -1,43 +1,42 @@
-from flask import Blueprint, request, jsonify, session
-from ..models.course import Course
-from ..extensions import db, socketio
-from ..utils.decorators import login_required, role_required
-from ..services.mail_service import send_email
+from flask import Blueprint, request
+from app.utils.decorators import login_required, role_required, admin_required
+from app.services.course_service import (
+    create_course_request,
+    approve_course,
+    reject_course,
+    get_my_requests
+)
 
-course_bp = Blueprint("courses", __name__)
+course_bp = Blueprint("courses", __name__, url_prefix="/courses")
+
 
 @course_bp.post("/")
 @login_required
-@role_required("professor")
+@role_required("PROFESOR")
 def request_course():
-    data = request.json
-    course = Course(
-        name=data["name"],
-        description=data["description"],
-        professor_id=session["user_id"]
-    )
-    db.session.add(course)
-    db.session.commit()
+    data = request.get_json()
+    professor_id = request.user_id
 
-    socketio.emit("new_course_request", {"course": course.name})
-    return jsonify({"message": "Request sent"})
+    return create_course_request(data, professor_id)
+
+
+@course_bp.get("/my")
+@login_required
+@role_required("PROFESOR")
+def my_requests():
+    professor_id = request.user_id
+    return get_my_requests(professor_id)
+
 
 @course_bp.post("/<int:course_id>/approve")
 @login_required
-@role_required("admin")
-def approve_course(course_id):
-    course = Course.query.get(course_id)
-    course.status = "approved"
-    db.session.commit()
-    send_email("Course approved", "Your course was approved")
-    return jsonify({"message": "Approved"})
+@admin_required
+def approve(course_id):
+    return approve_course(course_id)
+
 
 @course_bp.post("/<int:course_id>/reject")
 @login_required
-@role_required("admin")
-def reject_course(course_id):
-    course = Course.query.get(course_id)
-    course.status = "rejected"
-    db.session.commit()
-    send_email("Course rejected", "Your course was rejected")
-    return jsonify({"message": "Rejected"})
+@admin_required
+def reject(course_id):
+    return reject_course(course_id)
