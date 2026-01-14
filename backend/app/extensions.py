@@ -1,9 +1,12 @@
-from redis import Redis
-from app.config import REDIS_HOST, REDIS_PORT, REDIS_DB
+from flask_sqlalchemy import SQLAlchemy
+from flask_session import Session
+from flask_socketio import SocketIO
+from flask_mail import Mail
+import redis
 
-redis_client = Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    db=REDIS_DB,
-    decode_responses=True
-)
+db = SQLAlchemy()
+sess = Session()
+socketio = SocketIO(cors_allowed_origins="*")
+mail = Mail()
+
+redis_client = redis.Redis(host="redis", port=6379, decode_responses=True)

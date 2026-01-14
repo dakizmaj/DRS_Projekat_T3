@@ -1,29 +1,43 @@
-from flask import Blueprint, request
-from app.services.course_service import (
-    create_course_request,
-    get_course_requests,
-    process_course_request
-)
-from app.utils.auth import require_role
+from flask import Blueprint, request, jsonify, session
+from ..models.course import Course
+from ..extensions import db, socketio
+from ..utils.decorators import login_required, role_required
+from ..services.mail_service import send_email
 
 course_bp = Blueprint("courses", __name__)
 
-# PROFESOR – šalje zahtev za novi kurs
-@course_bp.route("/course-requests", methods=["POST"])
-@require_role("PROFESOR")
-def send_course_request():
+@course_bp.post("/")
+@login_required
+@role_required("professor")
+def request_course():
     data = request.json
-    return create_course_request(data)
+    course = Course(
+        name=data["name"],
+        description=data["description"],
+        professor_id=session["user_id"]
+    )
+    db.session.add(course)
+    db.session.commit()
 
-# PROFESOR – vidi svoje zahteve
-@course_bp.route("/course-requests", methods=["GET"])
-@require_role("PROFESOR")
-def my_course_requests():
-    return get_course_requests()
+    socketio.emit("new_course_request", {"course": course.name})
+    return jsonify({"message": "Request sent"})
 
-# ADMIN – prihvata ili odbija zahtev
-@course_bp.route("/course-requests/<int:req_id>", methods=["PUT"])
-@require_role("ADMIN")
-def handle_course_request(req_id):
-    data = request.json
-    return process_course_request(req_id, data)
+@course_bp.post("/<int:course_id>/approve")
+@login_required
+@role_required("admin")
+def approve_course(course_id):
+    course = Course.query.get(course_id)
+    course.status = "approved"
+    db.session.commit()
+    send_email("Course approved", "Your course was approved")
+    return jsonify({"message": "Approved"})
+
+@course_bp.post("/<int:course_id>/reject")
+@login_required
+@role_required("admin")
+def reject_course(course_id):
+    course = Course.query.get(course_id)
+    course.status = "rejected"
+    db.session.commit()
+    send_email("Course rejected", "Your course was rejected")
+    return jsonify({"message": "Rejected"})
