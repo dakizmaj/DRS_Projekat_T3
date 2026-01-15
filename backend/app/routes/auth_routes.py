@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify, make_response
+from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash
 from app.models.user import User
+from app.extensions import db
 from app.utils.session import create_session, delete_session
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -8,33 +9,17 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
+    user = User.query.filter_by(email=data["email"]).first()
 
-    user = User.query.filter_by(email=data.get("email")).first()
-    if not user or not check_password_hash(user.password, data.get("password")):
-        return jsonify({"message": "Neispravni kredencijali"}), 401
+    if not user or not check_password_hash(user.password, data["password"]):
+        return jsonify({"error": "Invalid credentials"}), 401
 
-    session_id = create_session(user.id)
-
-    response = make_response(jsonify({
-        "message": "Uspešna prijava",
-        "role": user.role
-    }))
-    response.set_cookie(
-        "session_id",
-        session_id,
-        httponly=True,
-        samesite="Lax"
-    )
-    return response
-
+    session_id = create_session(user.id, user.role)
+    return jsonify({"session_id": session_id})
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    session_id = request.cookies.get("session_id")
+    session_id = request.headers.get("X-Session-Id")
     delete_session(session_id)
-
-    response = make_response(jsonify({"message": "Uspešna odjava"}))
-    response.delete_cookie("session_id")
-    return response
-
+    return jsonify({"message": "Logged out"})
 

@@ -1,26 +1,29 @@
 from functools import wraps
 from flask import request, jsonify
-from app.utils.session import get_user_from_session
-from app.models.user import User
+from app.utils.session import get_session
 
-def login_required(role=None):
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        session_id = request.headers.get("X-Session-Id")
+        session = get_session(session_id)
+
+        if not session:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        request.user_id = int(session["user_id"])
+        request.user_role = session["role"]
+
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def role_required(role):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            session_id = request.cookies.get("session_id")
-            user_id = get_user_from_session(session_id)
-
-            if not user_id:
-                return jsonify({"message": "Niste prijavljeni"}), 401
-
-            user = User.query.get(user_id)
-            if not user:
-                return jsonify({"message": "Sesija nije validna"}), 401
-
-            if role and user.role != role:
-                return jsonify({"message": "Nemate dozvolu"}), 403
-
-            request.user = user
+            if request.user_role != role:
+                return jsonify({"error": "Forbidden"}), 403
             return f(*args, **kwargs)
         return wrapper
     return decorator
