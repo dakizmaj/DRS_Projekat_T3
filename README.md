@@ -4,9 +4,13 @@ Implementirane su sve funkcionalnosti do sekcije "Upravljanje zadacima"
 
 ## Testni podaci
 Admin:
-email: admin@test.com
-password: admin123
+email: admin@example.com
+password: Password123
 
 Profesor:
-email: prof@test.com
-password: prof123
+email: prof@example.com
+password: Password123
+
+Student:
+emaiL: student@example.com
+password: Password123
