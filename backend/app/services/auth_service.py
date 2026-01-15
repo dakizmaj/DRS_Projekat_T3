@@ -24,14 +24,10 @@ def authenticate_user(email, password):
 def create_session(user):
     session_id = str(uuid.uuid4())
 
-    redis_client.hset(
-        f"session:{session_id}",
-        mapping={
-            "user_id": user.id,
-            "role": user.role,
-            "email": user.email
-        }
-    )
+    session_key = f"session:{session_id}"
+    redis_client.hset(session_key, "user_id", user.id)
+    redis_client.hset(session_key, "role", user.uloga)
+    redis_client.hset(session_key, "email", user.email)
 
     redis_client.expire(f"session:{session_id}", SESSION_TTL)
 
