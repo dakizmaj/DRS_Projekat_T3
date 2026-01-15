@@ -1,34 +1,40 @@
-from flask import Blueprint, request, jsonify
-from app.services.auth_service import login_user, logout_user
+from flask import Blueprint, request, jsonify, make_response
+from werkzeug.security import check_password_hash
+from app.models.user import User
+from app.utils.session import create_session, delete_session
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
-
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    if not request.is_json:
-        return jsonify({"message": "Request must be JSON"}), 400
+    data = request.json
 
-    data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
-    user, session_id = login_user(email, password)
-    if not user:
-        return jsonify({"message": "Pogrešan email ili lozinka"}), 401
-    return jsonify({
+    user = User.query.filter_by(email=data.get("email")).first()
+    if not user or not check_password_hash(user.password, data.get("password")):
+        return jsonify({"message": "Neispravni kredencijali"}), 401
+
+    session_id = create_session(user.id)
+
+    response = make_response(jsonify({
         "message": "Uspešna prijava",
-        "user": user.to_dict(),
-        "session_id": session_id
-    })
+        "role": user.role
+    }))
+    response.set_cookie(
+        "session_id",
+        session_id,
+        httponly=True,
+        samesite="Lax"
+    )
+    return response
 
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    data = request.get_json()
-    session_id = data.get("session_id")
-    if not session_id:
-        return jsonify({"message": "Session ID required"}), 400
-    logout_user(session_id)
-    return jsonify({"message": "Uspešno ste se odjavili"})
+    session_id = request.cookies.get("session_id")
+    delete_session(session_id)
+
+    response = make_response(jsonify({"message": "Uspešna odjava"}))
+    response.delete_cookie("session_id")
+    return response
 
 

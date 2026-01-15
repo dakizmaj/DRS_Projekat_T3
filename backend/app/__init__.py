@@ -1,45 +1,30 @@
-from flask import Flask, jsonify
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_session import Session
 from flask_cors import CORS
-from .extensions import db, socketio, mail, redis_client
-from .routes.auth_routes import auth_bp
-from .routes.user_routes import user_bp
-from .routes.course_routes import course_bp
 
+db = SQLAlchemy()
+session = Session()
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    app.config.from_object("app.config.Config")
 
-    # --- Konfiguracija baze ---
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///drs.db"
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    CORS(app, supports_credentials=True)
 
-    # --- Konfiguracija mail-a ---
-    app.config["MAIL_SERVER"] = "smtp.gmail.com"
-    app.config["MAIL_PORT"] = 587
-    app.config["MAIL_USE_TLS"] = True
-    app.config["MAIL_USERNAME"] = "yourmail@gmail.com"
-    app.config["MAIL_PASSWORD"] = "yourpassword"
-
-    # --- Secret key za sesije ---
-    app.secret_key = "super-secret-key"
-
-    # --- Inicijalizacija ekstenzija ---
     db.init_app(app)
-    mail.init_app(app)
-    socketio.init_app(app)
+    session.init_app(app)
 
-    # --- Registracija blueprint-ova ---
-    app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(user_bp, url_prefix="/users")
-    app.register_blueprint(course_bp, url_prefix="/courses")
+    from app.routes.auth_routes import auth_bp
+    from app.routes.user_routes import users_bp
 
-    # --- Dodavanje test GET rute za browser ---
-    @app.route("/", methods=["GET"])
-    def home():
-        return jsonify({"message": "Backend radi!"})
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(users_bp, url_prefix="/api/users")
 
-    # --- Kreiranje svih tabela u bazi ---
+    from app.routes.task_routes import task_bp
+    app.register_blueprint(task_bp)
+
+
     with app.app_context():
         db.create_all()
 

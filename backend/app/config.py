@@ -1,23 +1,24 @@
 import os
+from datetime import timedelta
+import redis
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "secret")
+    SECRET_KEY = os.environ.get("SECRET_KEY", "super-secret-key")
 
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL",
-        "sqlite:///app.db"
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("DATABASE_URL")
+        or "postgresql://postgres:postgres@localhost:5432/drs_platforma"
     )
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # SESSION CONFIG (REDIS)
     SESSION_TYPE = "redis"
     SESSION_PERMANENT = True
-    PERMANENT_SESSION_LIFETIME = 3600
     SESSION_USE_SIGNER = True
-    SESSION_REDIS = None
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=1)
 
-    MAIL_SERVER = "smtp.gmail.com"
-    MAIL_PORT = 587
-    MAIL_USE_TLS = True
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME")
-    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+    SESSION_REDIS = redis.from_url(
+        os.environ.get("REDIS_URL") or "redis://localhost:6379"
+    )
 
