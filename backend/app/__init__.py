@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 from .extensions import db, socketio, mail, redis_client
 from .routes.auth_routes import auth_bp
 from .routes.user_routes import user_bp
@@ -7,6 +8,7 @@ from .routes.course_routes import course_bp
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)
 
     # --- Konfiguracija baze ---
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///drs.db"

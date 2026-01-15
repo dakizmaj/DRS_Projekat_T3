@@ -8,6 +8,9 @@ flask = "*"
 flask-socketio = "*"
 redis = "*"
 python-dotenv = "*"
+pypdf2 = "*"
+pymysql = "*"
+flask-cors = "*"
 
 [dev-packages]
 
