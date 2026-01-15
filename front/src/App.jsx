@@ -14,7 +14,8 @@ function App() {
     try {
       const response = await axios.post('http://127.0.0.1:5000/auth/login', { email, password })
       setMessage('Login uspešan: ' + JSON.stringify(response.data))
-      // Preusmeri na dashboard i prosledi user podatke
+      // Sačuvaj session_id
+      localStorage.setItem('session_id', response.data.session_id)
       navigate('/dashboard', { state: { user: response.data.user } })
     } catch (error) {
       setMessage('Greška: ' + (error.response?.data?.message || error.message))

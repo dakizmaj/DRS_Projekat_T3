@@ -1,5 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import AdminUsers from './AdminUsers';
 
 export default function Dashboard() {
   const location = useLocation();
@@ -12,8 +14,14 @@ export default function Dashboard() {
     return null;
   }
 
-  const handleLogout = () => {
-    // Očisti state i vrati na login
+  const handleLogout = async () => {
+    const session_id = localStorage.getItem('session_id');
+    if (session_id) {
+      try {
+        await axios.post('http://127.0.0.1:5000/auth/logout', { session_id });
+      } catch (e) {}
+      localStorage.removeItem('session_id');
+    }
     navigate('/', { replace: true });
   };
 
@@ -21,7 +29,7 @@ export default function Dashboard() {
     <div style={{ color: 'white', textAlign: 'center', marginTop: 40 }}>
       <h1>Dashboard</h1>
       <p>Dobrodošao, <b>{user.ime} {user.prezime}</b> ({user.uloga})</p>
-      <button onClick={handleLogout} style={{marginBottom: 24, padding: '8px 24px', borderRadius: 8, border: 'none', background: '#444', color: 'white', cursor: 'pointer'}}>Logout</button>
+      {user.uloga === 'ADMIN' && <AdminUsers />}
       <pre style={{textAlign:'left', margin:'0 auto', maxWidth:400, background:'#222', padding:16, borderRadius:8}}>
         {JSON.stringify(user, null, 2)}
       </pre>

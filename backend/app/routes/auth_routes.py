@@ -24,6 +24,11 @@ def login():
 
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
-    return logout_user()
+    data = request.get_json()
+    session_id = data.get("session_id")
+    if not session_id:
+        return jsonify({"message": "Session ID required"}), 400
+    logout_user(session_id)
+    return jsonify({"message": "Uspešno ste se odjavili"})
 
 
