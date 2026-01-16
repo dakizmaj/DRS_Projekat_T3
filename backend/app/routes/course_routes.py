@@ -5,9 +5,17 @@ from app.services.course_service import (
     get_pending_courses,
     approve_course,
     reject_course,
-    get_professor_courses
+    get_professor_courses,
+    update_course,
+    delete_course,
+    get_course_by_id,
+    enroll_student,
+    get_course_students,
+    upload_course_material
 )
 from app.sockets.admin_socket import notify_new_course
+from werkzeug.utils import secure_filename
+import os
 
 
 course_bp = Blueprint("courses", __name__)
@@ -100,3 +108,137 @@ def reject(course_id):
     return jsonify({"message": "Course rejected"}), 200
 
 
+# =========================
+# PROFESOR → menja informacije o kursu
+# =========================
+@course_bp.route("/<int:course_id>", methods=["PUT"])
+@login_required
+@role_required("professor")
+def update(course_id):
+    course = get_course_by_id(course_id)
+    
+    if not course:
+        return jsonify({"message": "Course not found"}), 404
+    
+    if course.professor_id != request.user.id:
+        return jsonify({"message": "Forbidden"}), 403
+    
+    data = request.json
+    updated_course = update_course(course_id, data)
+    
+    return jsonify({
+        "message": "Course updated",
+        "course": {
+            "id": updated_course.id,
+            "name": updated_course.name,
+            "description": updated_course.description
+        }
+    }), 200
+
+
+# =========================
+# PROFESOR → briše kurs
+# =========================
+@course_bp.route("/<int:course_id>", methods=["DELETE"])
+@login_required
+@role_required("professor")
+def delete(course_id):
+    course = get_course_by_id(course_id)
+    
+    if not course:
+        return jsonify({"message": "Course not found"}), 404
+    
+    if course.professor_id != request.user.id:
+        return jsonify({"message": "Forbidden"}), 403
+    
+    delete_course(course_id)
+    return jsonify({"message": "Course deleted"}), 200
+
+
+# =========================
+# PROFESOR → dodaje studente na kurs
+# =========================
+@course_bp.route("/<int:course_id>/enroll", methods=["POST"])
+@login_required
+@role_required("professor")
+def enroll(course_id):
+    course = get_course_by_id(course_id)
+    
+    if not course:
+        return jsonify({"message": "Course not found"}), 404
+    
+    if course.professor_id != request.user.id:
+        return jsonify({"message": "Forbidden"}), 403
+    
+    data = request.json
+    student_ids = data.get("student_ids", [])
+    
+    if not student_ids:
+        return jsonify({"message": "No students provided"}), 400
+    
+    enrolled = enroll_student(course_id, student_ids)
+    return jsonify({
+        "message": f"Enrolled {enrolled} students",
+        "count": enrolled
+    }), 200
+
+
+# =========================
+# PROFESOR → lista studenata na kursu
+# =========================
+@course_bp.route("/<int:course_id>/students", methods=["GET"])
+@login_required
+@role_required("professor")
+def list_students(course_id):
+    course = get_course_by_id(course_id)
+    
+    if not course:
+        return jsonify({"message": "Course not found"}), 404
+    
+    if course.professor_id != request.user.id:
+        return jsonify({"message": "Forbidden"}), 403
+    
+    students = get_course_students(course_id)
+    return jsonify([
+        {
+            "id": s.id,
+            "first_name": s.first_name,
+            "last_name": s.last_name,
+            "email": s.email
+        } for s in students
+    ]), 200
+
+
+# =========================
+# PROFESOR → okači PDF materijal
+# =========================
+@course_bp.route("/<int:course_id>/material", methods=["POST"])
+@login_required
+@role_required("professor")
+def upload_material(course_id):
+    course = get_course_by_id(course_id)
+    
+    if not course:
+        return jsonify({"message": "Course not found"}), 404
+    
+    if course.professor_id != request.user.id:
+        return jsonify({"message": "Forbidden"}), 403
+    
+    if 'file' not in request.files:
+        return jsonify({"message": "No file provided"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"message": "No file selected"}), 400
+    
+    if not file.filename.endswith('.pdf'):
+        return jsonify({"message": "Only PDF files allowed"}), 400
+    
+    filename = secure_filename(file.filename)
+    file_path = upload_course_material(course_id, file, filename)
+    
+    return jsonify({
+        "message": "Material uploaded",
+        "file_path": file_path
+    }), 200
