@@ -26,6 +26,22 @@ def approve_course(course_id):
     if course:
         course.status = "accepted"
         db.session.commit()
+        
+        # Pošalji email profesoru
+        from app.services.mail_service import send_email
+        professor = User.query.get(course.professor_id)
+        if professor:
+            subject = f"Kurs '{course.name}' je odobren"
+            body = f"""Poštovani {professor.first_name} {professor.last_name},
+
+Vaš zahtev za kreiranje kursa '{course.name}' je odobren od strane administratora.
+
+Sada možete upravljati kursom, dodavati studente, kreirati zadatke i okačiti materijale.
+
+Srdačan pozdrav,
+DRS Platforma Tim"""
+            send_email(subject, body, professor.email)
+    
     return course
 
 
@@ -34,6 +50,22 @@ def reject_course(course_id):
     if course:
         course.status = "rejected"
         db.session.commit()
+        
+        # Pošalji email profesoru
+        from app.services.mail_service import send_email
+        professor = User.query.get(course.professor_id)
+        if professor:
+            subject = f"Kurs '{course.name}' je odbijen"
+            body = f"""Poštovani {professor.first_name} {professor.last_name},
+
+Vaš zahtev za kreiranje kursa '{course.name}' je odbijen od strane administratora.
+
+Molimo kontaktirajte administratora za dodatne informacije.
+
+Srdačan pozdrav,
+DRS Platforma Tim"""
+            send_email(subject, body, professor.email)
+    
     return course
 
 

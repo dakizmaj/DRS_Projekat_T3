@@ -57,7 +57,9 @@ def my_courses():
         {
             "id": c.id,
             "name": c.name,
-            "status": c.status
+            "description": c.description,
+            "status": c.status,
+            "material_path": c.material_path
         } for c in courses
     ])
 
@@ -242,3 +244,39 @@ def upload_material(course_id):
         "message": "Material uploaded",
         "file_path": file_path
     }), 200
+
+
+# =========================
+# PROFESOR/STUDENT → download materijala
+# =========================
+@course_bp.route("/<int:course_id>/material/download", methods=["GET"])
+@login_required
+def download_material(course_id):
+    from flask import send_file
+    course = get_course_by_id(course_id)
+    
+    if not course:
+        return jsonify({"message": "Course not found"}), 404
+    
+    if not course.material_path:
+        return jsonify({"message": "No material uploaded"}), 404
+    
+    # Proveri da li je user profesor ili upisan student
+    if request.user.role == 'professor' and course.professor_id != request.user.id:
+        return jsonify({"message": "Forbidden"}), 403
+    
+    if request.user.role == 'student':
+        from app.models.enrollment import Enrollment
+        enrollment = Enrollment.query.filter_by(
+            course_id=course_id,
+            student_id=request.user.id
+        ).first()
+        if not enrollment:
+            return jsonify({"message": "Not enrolled in this course"}), 403
+    
+    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), course.material_path)
+    
+    if not os.path.exists(file_path):
+        return jsonify({"message": "File not found"}), 404
+    
+    return send_file(file_path, as_attachment=True)

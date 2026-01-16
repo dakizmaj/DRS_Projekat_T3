@@ -16,6 +16,8 @@ export default function ProfessorDashboard({ user }) {
   const [materialFile, setMaterialFile] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', description: '' });
+  const [showNewCourseForm, setShowNewCourseForm] = useState(false);
+  const [newCourseForm, setNewCourseForm] = useState({ name: '', description: '' });
 
   useEffect(() => {
     fetchCourses();
@@ -110,6 +112,11 @@ export default function ProfessorDashboard({ user }) {
       alert('Materijal okačen!');
       setShowMaterialForm(false);
       setMaterialFile(null);
+      // Refresh course data
+      fetchCourses();
+      const res = await api.get('/courses/my');
+      const updatedCourse = res.data.find(c => c.id === selectedCourse.id);
+      if (updatedCourse) setSelectedCourse(updatedCourse);
     } catch (e) {
       alert('Greška pri upload-u materijala');
     }
@@ -144,9 +151,55 @@ export default function ProfessorDashboard({ user }) {
     }
   };
 
+  const createCourseRequest = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/courses/', newCourseForm);
+      alert('Zahtev za kurs poslat! Čeka odobrenje administratora.');
+      setShowNewCourseForm(false);
+      setNewCourseForm({ name: '', description: '' });
+      fetchCourses();
+    } catch (e) {
+      alert('Greška pri kreiranju zahteva za kurs');
+    }
+  };
+
   return (
     <div style={{ padding: 20, color: 'white' }}>
-      <h2>Moji Kursevi</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h2>Moji Kursevi</h2>
+        <button 
+          onClick={() => setShowNewCourseForm(!showNewCourseForm)}
+          style={{ padding: '10px 20px', background: '#28a745', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', fontSize: 14 }}
+        >
+          {showNewCourseForm ? 'Otkaži' : '+ Novi zahtev za kurs'}
+        </button>
+      </div>
+
+      {showNewCourseForm && (
+        <div style={{ background: '#222', padding: 20, borderRadius: 8, marginBottom: 20 }}>
+          <h3>Kreiraj novi kurs</h3>
+          <form onSubmit={createCourseRequest}>
+            <input
+              placeholder="Naziv kursa"
+              value={newCourseForm.name}
+              onChange={e => setNewCourseForm({...newCourseForm, name: e.target.value})}
+              required
+              style={{ width: '100%', padding: 10, marginBottom: 10 }}
+            />
+            <textarea
+              placeholder="Opis kursa"
+              value={newCourseForm.description}
+              onChange={e => setNewCourseForm({...newCourseForm, description: e.target.value})}
+              required
+              style={{ width: '100%', padding: 10, marginBottom: 10, minHeight: 80 }}
+            />
+            <button type="submit" style={{ padding: '10px 20px', background: '#007bff', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}>
+              Pošalji zahtev
+            </button>
+          </form>
+        </div>
+      )}
       
       <div style={{ display: 'flex', gap: 20 }}>
         <div style={{ flex: 1, background: '#222', padding: 16, borderRadius: 8 }}>
@@ -295,9 +348,20 @@ export default function ProfessorDashboard({ user }) {
                   )}
 
                   {selectedCourse.material_path && (
-                    <div style={{ padding: 8, background: '#333', borderRadius: 4 }}>
-                      📄 {selectedCourse.material_path.split('/').pop()}
-                    </div>
+                    <a 
+                      href={`http://127.0.0.1:5000/courses/${selectedCourse.id}/material/download`}
+                      download
+                      style={{ 
+                        display: 'inline-block',
+                        padding: 8, 
+                        background: '#333', 
+                        borderRadius: 4,
+                        color: '#4fc3f7',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      📄 {selectedCourse.material_path.split('/').pop()} - Preuzmi
+                    </a>
                   )}
                 </div>
 

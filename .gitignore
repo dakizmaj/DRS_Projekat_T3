@@ -1,1 +1,14 @@
 front/README.md
+
+# Environment variables
+backend/.env
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Uploads
+backend/uploads/
