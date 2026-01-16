@@ -1,5 +1,8 @@
 from app import db
 from app.models.course import Course
+from app.models.enrollment import Enrollment
+from app.models.user import User
+import os
 
 
 def create_course_request(data, professor_id):
@@ -36,3 +39,77 @@ def reject_course(course_id):
 
 def get_professor_courses(professor_id):
     return Course.query.filter_by(professor_id=professor_id).all()
+
+
+def get_course_by_id(course_id):
+    return Course.query.get(course_id)
+
+
+def update_course(course_id, data):
+    course = Course.query.get(course_id)
+    if course:
+        if 'name' in data:
+            course.name = data['name']
+        if 'description' in data:
+            course.description = data['description']
+        db.session.commit()
+    return course
+
+
+def delete_course(course_id):
+    course = Course.query.get(course_id)
+    if course:
+        db.session.delete(course)
+        db.session.commit()
+        return True
+    return False
+
+
+def enroll_student(course_id, student_ids):
+    count = 0
+    for student_id in student_ids:
+        # Proveri da li student postoji
+        student = User.query.filter_by(id=student_id, role='student').first()
+        if not student:
+            continue
+        
+        # Proveri da li je već upisan
+        existing = Enrollment.query.filter_by(
+            course_id=course_id,
+            student_id=student_id
+        ).first()
+        
+        if existing:
+            continue
+        
+        enrollment = Enrollment(
+            course_id=course_id,
+            student_id=student_id
+        )
+        db.session.add(enrollment)
+        count += 1
+    
+    db.session.commit()
+    return count
+
+
+def get_course_students(course_id):
+    enrollments = Enrollment.query.filter_by(course_id=course_id).all()
+    return [e.student for e in enrollments]
+
+
+def upload_course_material(course_id, file, filename):
+    upload_dir = os.path.join('uploads', 'materials')
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Dodaj course_id u ime fajla da bude jedinstveno
+    file_path = os.path.join(upload_dir, f"{course_id}_{filename}")
+    file.save(file_path)
+    
+    # Ažuriraj course sa putanjom do materijala
+    course = Course.query.get(course_id)
+    if course:
+        course.material_path = file_path
+        db.session.commit()
+    
+    return file_path

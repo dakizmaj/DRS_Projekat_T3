@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from './api';
 import AdminUsers from './AdminUsers';
 import ProfileEdit from './ProfileEdit';
+import ProfessorDashboard from './ProfessorDashboard';
 
 export default function Dashboard() {
   const location = useLocation();
@@ -37,7 +38,10 @@ export default function Dashboard() {
       <button onClick={handleLogout} style={{marginBottom: 24, padding: '8px 24px', borderRadius: 8, border: 'none', background: '#444', color: 'white', cursor: 'pointer'}}>Logout</button>
       {userState.role !== 'admin' && <button onClick={()=>setShowEdit(v=>!v)} style={{marginLeft:16}}>Izmeni profil</button>}
       {showEdit && <ProfileEdit user={userState} onUpdate={setUserState} />}
+      
       {userState.role === 'admin' && <AdminUsers />}
+      {userState.role === 'professor' && <ProfessorDashboard user={userState} />}
+      
       {userState.profile_image && (
         <img src={`http://127.0.0.1:5000/users/profile_images/${userState.profile_image}`} alt="Profilna slika" style={{maxWidth:120, borderRadius:'50%', margin:'16px auto'}} />
       )}
