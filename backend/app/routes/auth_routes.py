@@ -7,6 +7,7 @@ auth_bp = Blueprint("auth", __name__)
 @auth_bp.route("/login", methods=["POST"])
 def login_route():
     data = request.json
+
     session_id, error = login(data.get("email"), data.get("password"))
 
     if error:

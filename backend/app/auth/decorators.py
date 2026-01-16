@@ -7,7 +7,6 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         session_id = request.cookies.get("session_id")
-
         user = get_user_from_session(session_id)
 
         if not user:
@@ -15,7 +14,6 @@ def login_required(f):
 
         request.user = user
         return f(*args, **kwargs)
-
     return decorated
 
 
