@@ -7,22 +7,22 @@ from app.services.redis_service import redis_service
 
 def login(email, password):
     if not email or not password:
-        return None, "Email and password are required"
+        return None, None, "Email and password are required"
 
     user = User.query.filter_by(email=email).first()
 
     if not user:
-        return None, "Invalid credentials"
+        return None, None, "Invalid credentials"
 
     if not check_password_hash(user.password, password):
-        return None, "Invalid credentials"
+        return None, None, "Invalid credentials"
 
     session_id = str(uuid4())
 
     # Kreiranje sesije u Redis-u (TTL = 1 sat)
     redis_service.create_session(session_id, user.id)
 
-    return session_id, None
+    return session_id, user, None
 
 
 def logout(session_id):

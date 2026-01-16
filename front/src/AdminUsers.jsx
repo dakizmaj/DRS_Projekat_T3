@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from './api';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ ime: '', prezime: '', email: '', password: '', uloga: 'STUDENT' });
-
-  const session_id = localStorage.getItem('session_id');
-  const axiosConfig = { headers: { 'X-Session-Id': session_id } };
+  const [form, setForm] = useState({ 
+    first_name: '', 
+    last_name: '', 
+    email: '', 
+    password: '', 
+    role: 'student',
+    date_of_birth: '2000-01-01',
+    gender: 'M'
+  });
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://127.0.0.1:5000/users/', axiosConfig);
+      const res = await api.get('/users/');
       setUsers(res.data);
       setError('');
     } catch (e) {
@@ -26,15 +31,23 @@ export default function AdminUsers() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Obrisati korisnika?')) return;
-    await axios.delete(`http://127.0.0.1:5000/users/${id}`, axiosConfig);
+    await api.delete(`/users/${id}`);
     fetchUsers();
   };
 
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://127.0.0.1:5000/users/', form, axiosConfig);
-      setForm({ ime: '', prezime: '', email: '', password: '', uloga: 'STUDENT' });
+      await api.post('/users/', form);
+      setForm({ 
+        first_name: '', 
+        last_name: '', 
+        email: '', 
+        password: '', 
+        role: 'student',
+        date_of_birth: '2000-01-01',
+        gender: 'M'
+      });
       fetchUsers();
     } catch (e) {
       setError('Greška pri dodavanju korisnika');
@@ -46,14 +59,15 @@ export default function AdminUsers() {
       <h2 style={{color:'white'}}>Korisnici</h2>
       {error && <p style={{color:'red'}}>{error}</p>}
       <form onSubmit={handleAdd} style={{marginBottom: 24}}>
-        <input placeholder="Ime" value={form.ime} onChange={e=>setForm(f=>({...f, ime:e.target.value}))} required />
-        <input placeholder="Prezime" value={form.prezime} onChange={e=>setForm(f=>({...f, prezime:e.target.value}))} required />
+        <input placeholder="Ime" value={form.first_name} onChange={e=>setForm(f=>({...f, first_name:e.target.value}))} required />
+        <input placeholder="Prezime" value={form.last_name} onChange={e=>setForm(f=>({...f, last_name:e.target.value}))} required />
         <input placeholder="Email" value={form.email} onChange={e=>setForm(f=>({...f, email:e.target.value}))} required />
         <input placeholder="Lozinka" type="password" value={form.password} onChange={e=>setForm(f=>({...f, password:e.target.value}))} required />
-        <select value={form.uloga} onChange={e=>setForm(f=>({...f, uloga:e.target.value}))}>
-          <option value="ADMIN">ADMIN</option>
-          <option value="PROFESOR">PROFESOR</option>
-          <option value="STUDENT">STUDENT</option>
+        <input placeholder="Datum rođenja" type="date" value={form.date_of_birth} onChange={e=>setForm(f=>({...f, date_of_birth:e.target.value}))} required />
+        <select value={form.role} onChange={e=>setForm(f=>({...f, role:e.target.value}))}>
+          <option value="admin">Admin</option>
+          <option value="professor">Profesor</option>
+          <option value="student">Student</option>
         </select>
         <button type="submit">Dodaj korisnika</button>
       </form>
@@ -66,10 +80,10 @@ export default function AdminUsers() {
             {users.map(u => (
               <tr key={u.id}>
                 <td>{u.id}</td>
-                <td>{u.ime}</td>
-                <td>{u.prezime}</td>
+                <td>{u.first_name}</td>
+                <td>{u.last_name}</td>
                 <td>{u.email}</td>
-                <td>{u.uloga}</td>
+                <td>{u.role}</td>
                 <td><button onClick={()=>handleDelete(u.id)}>Obriši</button></td>
               </tr>
             ))}

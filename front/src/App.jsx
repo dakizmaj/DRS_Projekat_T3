@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import axios from 'axios'
+import api from './api'
 import { useNavigate } from 'react-router-dom';
 import './App.css'
 
@@ -12,9 +12,8 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
-      const response = await axios.post('http://127.0.0.1:5000/auth/login', { email, password })
-      setMessage('Login uspešan: ' + JSON.stringify(response.data))
-      // Sačuvaj session_id
+      const response = await api.post('/auth/login', { email, password })
+      setMessage('Login uspešan!')
       localStorage.setItem('session_id', response.data.session_id)
       navigate('/dashboard', { state: { user: response.data.user } })
     } catch (error) {

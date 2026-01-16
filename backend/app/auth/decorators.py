@@ -6,8 +6,15 @@ from app.services.auth_service import get_user_from_session
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        session_id = request.cookies.get("session_id")
+        # Pokušaj da dobiješ session_id iz cookie-ja ili Authorization header-a
+        session_id = request.cookies.get("session_id") or request.headers.get("Authorization")
+        
+        print(f"DEBUG: session_id from cookie: {request.cookies.get('session_id')}")
+        print(f"DEBUG: session_id from header: {request.headers.get('Authorization')}")
+        print(f"DEBUG: final session_id: {session_id}")
+        
         user = get_user_from_session(session_id)
+        print(f"DEBUG: user from session: {user}")
 
         if not user:
             return jsonify({"message": "Unauthorized"}), 401
