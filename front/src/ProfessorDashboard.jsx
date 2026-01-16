@@ -18,6 +18,10 @@ export default function ProfessorDashboard({ user }) {
   const [editForm, setEditForm] = useState({ name: '', description: '' });
   const [showNewCourseForm, setShowNewCourseForm] = useState(false);
   const [newCourseForm, setNewCourseForm] = useState({ name: '', description: '' });
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [gradingSubmission, setGradingSubmission] = useState(null);
+  const [gradeForm, setGradeForm] = useState({ grade: '', feedback: '' });
 
   useEffect(() => {
     fetchCourses();
@@ -161,6 +165,31 @@ export default function ProfessorDashboard({ user }) {
       fetchCourses();
     } catch (e) {
       alert('Greška pri kreiranju zahteva za kurs');
+    }
+  };
+
+  const viewTaskSubmissions = async (task) => {
+    setSelectedTask(task);
+    try {
+      const res = await api.get(`/tasks/${task.id}/submissions`);
+      setSubmissions(res.data);
+    } catch (e) {
+      alert('Greška pri učitavanju submissions');
+    }
+  };
+
+  const gradeSubmission = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post(`/tasks/submissions/${gradingSubmission.id}/grade`, gradeForm);
+      alert('Ocena uneta!');
+      setGradingSubmission(null);
+      setGradeForm({ grade: '', feedback: '' });
+      // Refresh submissions
+      const res = await api.get(`/tasks/${selectedTask.id}/submissions`);
+      setSubmissions(res.data);
+    } catch (e) {
+      alert('Greška pri ocenjivanju');
     }
   };
 
@@ -405,12 +434,125 @@ export default function ProfessorDashboard({ user }) {
 
                   {tasks.map(task => (
                     <div key={task.id} style={{ background: '#333', padding: 12, marginBottom: 8, borderRadius: 4 }}>
-                      <div><strong>{task.title}</strong></div>
-                      <div style={{ fontSize: 12, color: '#aaa' }}>{task.description}</div>
-                      <div style={{ fontSize: 12, color: '#aaa' }}>Rok: {new Date(task.deadline).toLocaleString()}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <div><strong>{task.title}</strong></div>
+                          <div style={{ fontSize: 12, color: '#aaa' }}>{task.description}</div>
+                          <div style={{ fontSize: 12, color: '#aaa' }}>Rok: {new Date(task.deadline).toLocaleString()}</div>
+                        </div>
+                        <button
+                          onClick={() => viewTaskSubmissions(task)}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#17a2b8',
+                            border: 'none',
+                            color: 'white',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontSize: 12
+                          }}
+                        >
+                          Submissions
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Submissions Modal */}
+                {selectedTask && (
+                  <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.8)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000
+                  }}>
+                    <div style={{
+                      background: '#222',
+                      padding: 24,
+                      borderRadius: 8,
+                      maxWidth: 600,
+                      width: '90%',
+                      maxHeight: '80vh',
+                      overflowY: 'auto'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h3 style={{ margin: 0 }}>Submissions: {selectedTask.title}</h3>
+                        <button
+                          onClick={() => { setSelectedTask(null); setSubmissions([]); }}
+                          style={{ padding: '4px 12px', background: '#dc3545', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          ✕ Zatvori
+                        </button>
+                      </div>
+
+                      {submissions.length === 0 ? (
+                        <p style={{ color: '#aaa' }}>Nema submissions za ovaj zadatak</p>
+                      ) : (
+                        submissions.map(sub => (
+                          <div key={sub.id} style={{ background: '#333', padding: 12, marginBottom: 12, borderRadius: 4 }}>
+                            <p style={{ margin: 0 }}>
+                              <strong>{sub.student.first_name} {sub.student.last_name}</strong> ({sub.student.email})
+                            </p>
+                            <p style={{ fontSize: 12, color: '#aaa', margin: '4px 0' }}>
+                              Predato: {new Date(sub.submitted_at).toLocaleString()}
+                            </p>
+                            {sub.grade !== null ? (
+                              <>
+                                <p style={{ margin: '8px 0', fontSize: 16, fontWeight: 'bold', color: '#28a745' }}>
+                                  Ocena: {sub.grade}
+                                </p>
+                                {sub.feedback && <p style={{ fontSize: 12, color: '#aaa' }}>Komentar: {sub.feedback}</p>}
+                              </>
+                            ) : (
+                              <>
+                                {gradingSubmission?.id === sub.id ? (
+                                  <form onSubmit={gradeSubmission} style={{ marginTop: 8 }}>
+                                    <input
+                                      type="number"
+                                      placeholder="Ocena (1-10)"
+                                      value={gradeForm.grade}
+                                      onChange={e => setGradeForm({...gradeForm, grade: e.target.value})}
+                                      required
+                                      min="1"
+                                      max="10"
+                                      style={{ width: '100%', padding: 6, marginBottom: 6 }}
+                                    />
+                                    <textarea
+                                      placeholder="Komentar (opciono)"
+                                      value={gradeForm.feedback}
+                                      onChange={e => setGradeForm({...gradeForm, feedback: e.target.value})}
+                                      style={{ width: '100%', padding: 6, marginBottom: 6, minHeight: 50 }}
+                                    />
+                                    <button type="submit" style={{ padding: '6px 12px', background: '#28a745', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', marginRight: 8 }}>
+                                      Sačuvaj
+                                    </button>
+                                    <button type="button" onClick={() => { setGradingSubmission(null); setGradeForm({ grade: '', feedback: '' }); }} style={{ padding: '6px 12px', background: '#6c757d', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}>
+                                      Otkaži
+                                    </button>
+                                  </form>
+                                ) : (
+                                  <button
+                                    onClick={() => setGradingSubmission(sub)}
+                                    style={{ marginTop: 8, padding: '6px 12px', background: '#ffc107', border: 'none', color: 'black', borderRadius: 4, cursor: 'pointer' }}
+                                  >
+                                    Oceni
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

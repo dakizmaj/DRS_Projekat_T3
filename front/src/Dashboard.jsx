@@ -4,6 +4,7 @@ import api from './api';
 import AdminUsers from './AdminUsers';
 import ProfileEdit from './ProfileEdit';
 import ProfessorDashboard from './ProfessorDashboard';
+import StudentDashboard from './StudentDashboard';
 
 export default function Dashboard() {
   const location = useLocation();
@@ -13,8 +14,21 @@ export default function Dashboard() {
   const [showEdit, setShowEdit] = React.useState(false);
   const [userState, setUserState] = React.useState(user);
 
+  // Učitaj fresh user podatke sa servera
   React.useEffect(() => {
-    if (!user) {
+    const fetchUser = async () => {
+      try {
+        const res = await api.get('/users/me');
+        setUserState(res.data.user);
+      } catch (e) {
+        console.error('Failed to fetch user:', e);
+        navigate('/', { replace: true });
+      }
+    };
+    
+    if (localStorage.getItem('session_id')) {
+      fetchUser();
+    } else if (!user) {
       navigate('/', { replace: true });
     }
   }, [user, navigate]);
@@ -41,6 +55,7 @@ export default function Dashboard() {
       
       {userState.role === 'admin' && <AdminUsers />}
       {userState.role === 'professor' && <ProfessorDashboard user={userState} />}
+      {userState.role === 'student' && <StudentDashboard user={userState} />}
       
       {userState.profile_image && (
         <img src={`http://127.0.0.1:5000/users/profile_images/${userState.profile_image}`} alt="Profilna slika" style={{maxWidth:120, borderRadius:'50%', margin:'16px auto'}} />

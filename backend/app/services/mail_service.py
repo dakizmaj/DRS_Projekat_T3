@@ -24,7 +24,7 @@ def _send_async(subject, body, recipient, mail_username, mail_password, mail_ser
         print(f"Greška pri slanju emaila: {e}")
 
 
-def send_email(subject, body, recipient):
+def send_email(recipient, subject, body):
     """Šalje email korišćenjem multiprocessing Process"""
     mail_username = os.environ.get("MAIL_USERNAME")
     mail_password = os.environ.get("MAIL_PASSWORD")
