@@ -59,6 +59,18 @@ def update_course(course_id, data):
 def delete_course(course_id):
     course = Course.query.get(course_id)
     if course:
+        # Prvo obriši sve enrollmente
+        Enrollment.query.filter_by(course_id=course_id).delete()
+        
+        # Obriši sve zadatke i submissions
+        from app.models.task import Task
+        from app.models.submission import Submission
+        tasks = Task.query.filter_by(course_id=course_id).all()
+        for task in tasks:
+            Submission.query.filter_by(task_id=task.id).delete()
+            db.session.delete(task)
+        
+        # Obriši kurs
         db.session.delete(course)
         db.session.commit()
         return True

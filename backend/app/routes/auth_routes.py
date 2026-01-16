@@ -24,6 +24,7 @@ def login_route():
 
     response = make_response(jsonify({
         "message": "Login successful",
+        "session_id": session_id,
         "user": {
             "id": user.id,
             "first_name": user.first_name,
