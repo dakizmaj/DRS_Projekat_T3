@@ -49,3 +49,21 @@ def update_profile():
     user = request.user
     update_user(user, request.json)
     return jsonify({"message": "Profile updated"})
+
+
+@user_bp.route("/students", methods=["GET"])
+@login_required
+@role_required("professor")
+def list_students():
+    """Lista svih studenata - dostupno profesorima"""
+    users = get_all_users()
+    students = [u for u in users if u.role == 'student']
+    return jsonify([
+        {
+            "id": s.id,
+            "first_name": s.first_name,
+            "last_name": s.last_name,
+            "email": s.email,
+            "role": s.role
+        } for s in students
+    ])
