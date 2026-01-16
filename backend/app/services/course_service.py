@@ -27,6 +27,22 @@ def create_course_request(data, professor_id):
 
     return jsonify({"message": "Request sent"}), 201
 
+# 🔴 WEBSOCKET EVENT ZA ADMINA
+    socketio.emit(
+        "new_course_request",
+        {
+            "id": course.id,
+            "name": course.name,
+            "description": course.description,
+            "professor_id": course.professor_id
+        }
+    )
+
+    return {
+        "message": "Course request submitted",
+        "status": course.status
+    }, 201
+
 
 def approve_course(course_id):
     course = Course.query.get(course_id)

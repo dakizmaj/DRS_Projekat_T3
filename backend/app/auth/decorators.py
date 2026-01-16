@@ -2,7 +2,6 @@ from functools import wraps
 from flask import request, jsonify, g
 from app.extensions import redis_client
 
-
 SESSION_PREFIX = "session:"
 SESSION_TTL = 3600  # 1 sat
 
@@ -10,7 +9,8 @@ SESSION_TTL = 3600  # 1 sat
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        session_id = request.cookies.get("session_id")
+        # SESSION ID SE UVEK ČITA IZ HEADERA
+        session_id = request.headers.get("X-Session-Id")
 
         if not session_id:
             return jsonify({"error": "Unauthorized"}), 401
@@ -19,8 +19,9 @@ def login_required(f):
         session = redis_client.hgetall(session_key)
 
         if not session:
-            return jsonify({"error": "Session expired"}), 401
+            return jsonify({"error": "Session expired or invalid"}), 401
 
+        # PODACI IZ REDIS-A
         g.user_id = int(session[b"user_id"])
         g.role = session[b"role"].decode()
         g.email = session[b"email"].decode()
