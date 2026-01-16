@@ -4,6 +4,11 @@ from datetime import datetime
 
 
 def create_user(data):
+    # Provera da li email već postoji
+    if User.query.filter_by(email=data["email"]).first():
+        raise ValueError("Email already exists")
+    
+    # Kreiranje novog korisnika
     user = User(
         first_name=data["first_name"],
         last_name=data["last_name"],
@@ -17,8 +22,10 @@ def create_user(data):
     )
 
     user.set_password(data["password"])
+
     db.session.add(user)
     db.session.commit()
+
     return user
 
 

@@ -1,29 +1,32 @@
 from functools import wraps
 from flask import request, jsonify
-from app.utils.session import get_session
+from app.services.auth_service import get_user_from_session
+
 
 def login_required(f):
     @wraps(f)
-    def wrapper(*args, **kwargs):
-        session_id = request.headers.get("X-Session-Id")
-        session = get_session(session_id)
+    def decorated(*args, **kwargs):
+        session_id = request.cookies.get("session_id")
 
-        if not session:
-            return jsonify({"error": "Unauthorized"}), 401
+        user = get_user_from_session(session_id)
 
-        request.user_id = int(session["user_id"])
-        request.user_role = session["role"]
+        if not user:
+            return jsonify({"message": "Unauthorized"}), 401
 
+        request.user = user
         return f(*args, **kwargs)
-    return wrapper
+
+    return decorated
 
 
 def role_required(role):
-    def decorator(f):
+    def wrapper(f):
         @wraps(f)
-        def wrapper(*args, **kwargs):
-            if request.user_role != role:
-                return jsonify({"error": "Forbidden"}), 403
+        def decorated(*args, **kwargs):
+            if request.user.role != role:
+                return jsonify({"message": "Forbidden"}), 403
             return f(*args, **kwargs)
-        return wrapper
-    return decorator
+
+        return decorated
+
+    return wrapper

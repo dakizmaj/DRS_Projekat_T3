@@ -3,7 +3,6 @@ from uuid import uuid4
 
 from app.models.user import User
 from app.services.redis_service import redis_service
-from app import db
 
 
 def login(email, password):
