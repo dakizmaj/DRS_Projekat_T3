@@ -17,6 +17,7 @@ from app.sockets.admin_socket import notify_new_course
 from werkzeug.utils import secure_filename
 import os
 
+
 course_bp = Blueprint("courses", __name__)
 
 

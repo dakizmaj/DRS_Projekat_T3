@@ -6,9 +6,6 @@ from app.services.redis_service import redis_service
 
 
 def login(email, password):
-    if not email or not password:
-        return None, None, "Email and password are required"
-
     user = User.query.filter_by(email=email).first()
 
     if not user:

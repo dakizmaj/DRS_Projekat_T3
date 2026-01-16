@@ -14,8 +14,22 @@ user_bp = Blueprint("users", __name__)
 @login_required
 @role_required("admin")
 def create_user_route():
-    user = create_user(request.json)
-    return jsonify({"message": "User created", "id": user.id})
+    data = request.json
+
+    if not data:
+        return jsonify({"error": "Nema podataka u zahtevu"}), 400
+
+    required_fields = [
+        "first_name", "last_name", "email", "password",
+        "role", "date_of_birth", "gender"
+    ]
+
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Nedostaje polje: {field}"}), 400
+
+    user = create_user(data)
+    return jsonify({"message": "User created", "id": user.id}), 201
 
 
 @user_bp.route("/", methods=["GET"])
@@ -46,8 +60,19 @@ def delete_user_route(user_id):
 @user_bp.route("/me", methods=["PUT"])
 @login_required
 def update_profile():
+    data = request.json
     user = request.user
-    update_user(user, request.json)
+
+    if not data:
+        return jsonify({"error": "Nema podataka za izmenu"}), 400
+
+    forbidden_fields = ["role", "email", "password", "id"]
+
+    for field in forbidden_fields:
+        if field in data:
+            return jsonify({"error": f"Polje '{field}' nije dozvoljeno za izmenu"}), 403
+
+    update_user(user, data)
     return jsonify({"message": "Profile updated"})
 
 

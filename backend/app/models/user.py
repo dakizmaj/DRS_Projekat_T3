@@ -1,5 +1,5 @@
 from app import db
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 class User(db.Model):
@@ -13,7 +13,10 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
 
-    role = db.Column(db.String(20), nullable=False)  # admin, professor, student
+    role = db.Column(
+        db.Enum("admin", "professor", "student", name="user_roles"),
+        nullable=False
+    )
 
     date_of_birth = db.Column(db.Date, nullable=False)
     gender = db.Column(db.String(10), nullable=False)
@@ -26,3 +29,6 @@ class User(db.Model):
 
     def set_password(self, raw_password):
         self.password = generate_password_hash(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password_hash(self.password, raw_password)
