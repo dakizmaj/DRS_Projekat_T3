@@ -20,7 +20,7 @@ with app.app_context():
         gender="M",
         country="Serbia",
         street="Admin Street",
-        number="1"
+        street_number="1"
     )
 
     professor = User(
@@ -33,7 +33,7 @@ with app.app_context():
         gender="M",
         country="Serbia",
         street="Professor Street",
-        number="10"
+        street_number="10"
     )
 
     student = User(
@@ -46,7 +46,7 @@ with app.app_context():
         gender="M",
         country="Serbia",
         street="Student Street",
-        number="20"
+        street_number="20"
     )
 
     db.session.add_all([admin, professor, student])

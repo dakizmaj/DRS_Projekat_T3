@@ -7,7 +7,7 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get("DATABASE_URL")
-        or "postgresql://postgres:postgres@localhost:5432/drs_platforma"
+        or "mysql+pymysql://root:Password123@localhost:3306/drs_platforma"
     )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -21,4 +21,13 @@ class Config:
     SESSION_REDIS = redis.from_url(
         os.environ.get("REDIS_URL") or "redis://localhost:6379"
     )
+
+    # MAIL CONFIG
+    MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+    MAIL_USE_TLS = True
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@drs.com")
+
 

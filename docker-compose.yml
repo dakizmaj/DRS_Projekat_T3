@@ -1,18 +1,17 @@
 
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: drs_postgres
+  mysql:
+    image: mysql:8.0
+    container_name: drs_mysql
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: drs_platforma
+      MYSQL_ROOT_PASSWORD: Password123
+      MYSQL_DATABASE: drs_platforma
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
   redis:
     image: redis:7
@@ -22,4 +21,4 @@ services:
       - "6379:6379"
 
 volumes:
-  postgres_data:
+  mysql_data:

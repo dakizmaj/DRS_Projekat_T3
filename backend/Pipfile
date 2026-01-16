@@ -5,12 +5,16 @@ name = "pypi"
 
 [packages]
 flask = "*"
+flask-sqlalchemy = "*"
 flask-socketio = "*"
+flask-mail = "*"
+flask-cors = "*"
 redis = "*"
+pymysql = "*"
+cryptography = "*"
 python-dotenv = "*"
 pypdf2 = "*"
-pymysql = "*"
-flask-cors = "*"
+werkzeug = "*"
 
 [dev-packages]
 
