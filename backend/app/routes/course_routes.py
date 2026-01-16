@@ -9,6 +9,7 @@ from app.services.course_service import (
 )
 from app.sockets.admin_socket import notify_new_course
 
+
 course_bp = Blueprint("courses", __name__)
 
 
@@ -97,3 +98,5 @@ def reject(course_id):
         return jsonify({"message": "Course not found"}), 404
 
     return jsonify({"message": "Course rejected"}), 200
+
+

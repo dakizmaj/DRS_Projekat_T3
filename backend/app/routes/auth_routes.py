@@ -7,14 +7,23 @@ auth_bp = Blueprint("auth", __name__)
 @auth_bp.route("/login", methods=["POST"])
 def login_route():
     data = request.json
-    session_id, user, error = login(data.get("email"), data.get("password"))
+
+    if not data:
+        return jsonify({"error": "Nedostaju podaci za prijavu"}), 400
+
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Email i lozinka su obavezni"}), 400
+
+    session_id, user, error = login(email, password)
 
     if error:
-        return jsonify({"message": error}), 401
+        return jsonify({"error": error}), 401
 
     response = make_response(jsonify({
         "message": "Login successful",
-        "session_id": session_id,
         "user": {
             "id": user.id,
             "first_name": user.first_name,
@@ -29,15 +38,16 @@ def login_route():
             "profile_image": user.profile_image
         }
     }))
+
     response.set_cookie(
         "session_id",
         session_id,
-        httponly=False,
-        max_age=3600,
-        samesite='Lax',
-        path='/'
+        httponly=True,         
+        max_age=3600,           # 1 sat
+        samesite="Lax",
+        path="/"
     )
-    print(f"DEBUG: Created session {session_id} for user {user.email}")
+
     return response
 
 
