@@ -52,14 +52,15 @@ with app.app_context():
     db.session.add_all([admin, professor, student])
     db.session.commit()
 
-    course = Course(
+    # ZAHTEV ZA KURS (PENDING)
+    course_request = Course(
         name="Distribuirani računarski sistemi",
         description="Uvod u DRS",
         professor_id=professor.id,
-        status="PENDING"
+        status="pending"
     )
 
-    db.session.add(course)
+    db.session.add(course_request)
     db.session.commit()
 
-    print("✅ Seed data successfully created")
+    print("Seed data successfully created")
