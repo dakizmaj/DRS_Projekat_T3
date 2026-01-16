@@ -1,37 +1,38 @@
-import redis
 import uuid
+from app.extensions import redis_client
 
-redis_client = redis.Redis(
-    host="localhost",
-    port=6379,
-    db=0,
-    decode_responses=True
-)
+SESSION_PREFIX = "session:"
+SESSION_TTL = 3600  # 1 sat
 
-SESSION_TTL = 60 * 60  # 1 sat
 
-def create_session(user_id, role):
+def create_session(user_id, role, email):
     session_id = str(uuid.uuid4())
-    key = f"session:{session_id}"
+    session_key = SESSION_PREFIX + session_id
 
-    redis_client.hset(key, mapping={
+    redis_client.hset(session_key, mapping={
         "user_id": user_id,
-        "role": role
+        "role": role,
+        "email": email
     })
-    redis_client.expire(key, SESSION_TTL)
+    redis_client.expire(session_key, SESSION_TTL)
 
     return session_id
 
-def get_session(session_id):
-    if not session_id:
+
+def get_session_data(session_id):
+    session_key = SESSION_PREFIX + session_id
+    session = redis_client.hgetall(session_key)
+
+    if not session:
         return None
 
-    key = f"session:{session_id}"
-    if not redis_client.exists(key):
-        return None
+    return {
+        "user_id": int(session[b"user_id"]),
+        "role": session[b"role"].decode(),
+        "email": session[b"email"].decode()
+    }
 
-    return redis_client.hgetall(key)
 
 def delete_session(session_id):
-    key = f"session:{session_id}"
-    redis_client.delete(key)
+    if session_id:
+        redis_client.delete(SESSION_PREFIX + session_id)
