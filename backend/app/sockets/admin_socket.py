@@ -1,6 +1,18 @@
-from app import create_app
+from flask_socketio import emit
+from app.extensions import socketio
 
-app = create_app()
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+@socketio.on("connect", namespace="/admin")
+def admin_connect():
+    emit("connected", {"message": "Admin connected"})
+
+
+def notify_new_course(course_name, professor_email):
+    socketio.emit(
+        "new_course_request",
+        {
+            "course_name": course_name,
+            "professor": professor_email
+        },
+        namespace="/admin"
+    )

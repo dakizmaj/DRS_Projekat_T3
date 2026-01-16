@@ -1,44 +1,51 @@
-from flask import Blueprint, jsonify, request
-from app.models.user import User
-from app.db import db
-from app.auth.decorators import login_required, admin_required
+from flask import Blueprint, request, jsonify
+from app.auth.decorators import login_required, role_required
+from app.services.user_service import (
+    create_user,
+    get_all_users,
+    delete_user,
+    update_user
+)
 
 user_bp = Blueprint("users", __name__)
 
+
+@user_bp.route("/", methods=["POST"])
+@login_required
+@role_required("admin")
+def create_user_route():
+    user = create_user(request.json)
+    return jsonify({"message": "User created", "id": user.id})
+
+
 @user_bp.route("/", methods=["GET"])
 @login_required
-@admin_required
-def get_all_users(current_user_id):
-    users = User.query.all()
+@role_required("admin")
+def list_users():
+    users = get_all_users()
     return jsonify([
         {
             "id": u.id,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
             "email": u.email,
             "role": u.role
         } for u in users
     ])
 
 
-@user_bp.route("/", methods=["POST"])
+@user_bp.route("/<int:user_id>", methods=["DELETE"])
 @login_required
-@admin_required
-def create_user(current_user_id):
-    data = request.json
+@role_required("admin")
+def delete_user_route(user_id):
+    if delete_user(user_id):
+        return jsonify({"message": "User deleted"})
+    return jsonify({"message": "User not found"}), 404
 
-    user = User(
-        first_name=data["first_name"],
-        last_name=data["last_name"],
-        email=data["email"],
-        role=data["role"],
-        date_of_birth=data["date_of_birth"],
-        gender=data["gender"],
-        country=data["country"],
-        street=data["street"],
-        street_number=data["street_number"]
-    )
-    user.set_password(data["password"])
 
-    db.session.add(user)
-    db.session.commit()
-
-    return jsonify({"message": "User created"}), 201
+@user_bp.route("/me", methods=["PUT"])
+@login_required
+def update_profile():
+    user = request.user
+    update_user(user, request.json)
+    return jsonify({"message": "Profile updated"})

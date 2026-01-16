@@ -1,12 +1,18 @@
-from app.extensions import db
+from app import db
 
 class Course(db.Model):
     __tablename__ = "courses"
 
     id = db.Column(db.Integer, primary_key=True)
 
-    name = db.Column(db.String(120), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
+
+    status = db.Column(
+        db.String(20),
+        nullable=False,
+        default="pending"  # pending, accepted, rejected
+    )
 
     professor_id = db.Column(
         db.Integer,
@@ -14,17 +20,4 @@ class Course(db.Model):
         nullable=False
     )
 
-    status = db.Column(
-        db.String(20),
-        nullable=False,
-        default="PENDING"
-    )
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "professor_id": self.professor_id,
-            "status": self.status
-        }
+    professor = db.relationship("User", backref="courses")

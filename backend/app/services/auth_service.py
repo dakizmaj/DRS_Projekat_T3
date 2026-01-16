@@ -1,51 +1,46 @@
-import uuid
 from werkzeug.security import check_password_hash
+from uuid import uuid4
+from datetime import datetime, timedelta
 
+from app.services.redis_service import redis_client
 from app.models.user import User
-from app.extensions import redis_client
+from app import db
 
-SESSION_TTL = 3600  # 1 sat
+SESSION_PREFIX = "session:"
+SESSION_TTL_SECONDS = 3600  # 1 sat
 
 
-def authenticate_user(email, password):
-    if not email or not password:
-        return None
-
+def login(email, password):
     user = User.query.filter_by(email=email).first()
+
     if not user:
-        return None
+        return None, "Invalid credentials"
 
     if not check_password_hash(user.password, password):
+        return None, "Invalid credentials"
+
+    session_id = str(uuid4())
+
+    redis_client.setex(
+        SESSION_PREFIX + session_id,
+        SESSION_TTL_SECONDS,
+        user.id
+    )
+
+    return session_id, None
+
+
+def logout(session_id):
+    redis_client.delete(SESSION_PREFIX + session_id)
+
+
+def get_user_from_session(session_id):
+    if not session_id:
         return None
 
-    return user
+    user_id = redis_client.get(SESSION_PREFIX + session_id)
 
+    if not user_id:
+        return None
 
-def create_session(user):
-    session_id = str(uuid.uuid4())
-
-    session_key = f"session:{session_id}"
-    redis_client.hset(session_key, "user_id", user.id)
-    redis_client.hset(session_key, "role", user.uloga)
-    redis_client.hset(session_key, "email", user.email)
-
-    redis_client.expire(f"session:{session_id}", SESSION_TTL)
-
-    return session_id
-
-
-def delete_session(session_id):
-    redis_client.delete(f"session:{session_id}")
-
-
-# WRAPPER FUNKCIJE KOJE RUTE OČEKUJU
-def login_user(email, password):
-    user = authenticate_user(email, password)
-    if not user:
-        return None, None
-    session_id = create_session(user)
-    return user, session_id
-
-
-def logout_user(session_id):
-    delete_session(session_id)
+    return User.query.get(int(user_id))

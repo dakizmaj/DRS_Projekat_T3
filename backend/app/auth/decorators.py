@@ -1,33 +1,30 @@
 from functools import wraps
-from flask import jsonify
-from app.utils.session import get_current_user_id
-from app.models.user import User
-
-def login_required(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        user_id = get_current_user_id()
-        if not user_id:
-            return jsonify({"error": "Unauthorized"}), 401
-        return fn(user_id, *args, **kwargs)
-    return wrapper
+from flask import request, jsonify
+from app.services.auth_service import get_user_from_session
 
 
-def admin_required(fn):
-    @wraps(fn)
-    def wrapper(current_user_id, *args, **kwargs):
-        user = User.query.get(current_user_id)
-        if user.role != "admin":
-            return jsonify({"error": "Forbidden"}), 403
-        return fn(current_user_id, *args, **kwargs)
-    return wrapper
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        session_id = request.cookies.get("session_id")
+
+        user = get_user_from_session(session_id)
+
+        if not user:
+            return jsonify({"message": "Unauthorized"}), 401
+
+        request.user = user
+        return f(*args, **kwargs)
+
+    return decorated
 
 
-def professor_required(fn):
-    @wraps(fn)
-    def wrapper(current_user_id, *args, **kwargs):
-        user = User.query.get(current_user_id)
-        if user.role != "profesor":
-            return jsonify({"error": "Forbidden"}), 403
-        return fn(current_user_id, *args, **kwargs)
+def role_required(role):
+    def wrapper(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if request.user.role != role:
+                return jsonify({"message": "Forbidden"}), 403
+            return f(*args, **kwargs)
+        return decorated
     return wrapper
