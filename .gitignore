@@ -1,14 +1,42 @@
 front/README.md
 
 # Environment variables
-backend/.env
 .env
+.env.local
+backend/.env
 
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
 *.egg-info/
+Pipfile.lock
 
-# Uploads
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Uploads (local development)
 backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

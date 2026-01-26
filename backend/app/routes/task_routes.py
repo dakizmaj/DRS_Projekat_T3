@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from app.auth.decorators import login_required, role_required
 from app.services.task_service import (
     create_task,
@@ -351,3 +351,36 @@ def my_tasks():
         })
     
     return jsonify(result), 200
+
+
+# =========================
+# PROFESOR → download submission fajla
+# =========================
+@task_bp.route("/submissions/<int:submission_id>/download", methods=["GET"])
+@login_required
+@role_required("professor")
+def download_submission(submission_id):
+    import os
+    from app.models.submission import Submission
+
+    submission = Submission.query.get(submission_id)
+
+    if not submission:
+        return jsonify({"message": "Submission not found"}), 404
+
+    task = get_task_by_id(submission.task_id)
+    course = get_course_by_id(task.course_id)
+
+    if course.professor_id != request.user.id:
+        return jsonify({"message": "Forbidden"}), 403
+
+    if not submission.file_path or not os.path.exists(submission.file_path):
+        return jsonify({"message": "File not found"}), 404
+
+    filename = os.path.basename(submission.file_path)
+
+    return send_file(
+        submission.file_path,
+        as_attachment=True,
+        download_name=f"{submission.student.first_name}_{submission.student.last_name}_{filename}"
+    )

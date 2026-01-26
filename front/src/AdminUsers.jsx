@@ -1,18 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { io } from 'socket.io-client';
 import api from './api';
 
 export default function AdminUsers() {
   const [activeTab, setActiveTab] = useState('users');
-  
+  const socketRef = useRef(null);
+  const [notification, setNotification] = useState(null);
+
   // Users
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ 
-    first_name: '', 
-    last_name: '', 
-    email: '', 
-    password: '', 
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    password: '',
     role: 'student',
     date_of_birth: '2000-01-01',
     gender: 'M'
@@ -22,8 +25,33 @@ export default function AdminUsers() {
   const [pendingCourses, setPendingCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
 
-  useEffect(() => { 
-    fetchUsers(); 
+  // WebSocket connection
+  useEffect(() => {
+    socketRef.current = io('http://localhost:5000/admin', {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log('WebSocket connected to /admin namespace');
+    });
+
+    socketRef.current.on('new_course_request', (data) => {
+      console.log('New course request:', data);
+      setNotification(`Novi zahtev za kurs: ${data.course_name}`);
+      fetchPendingCourses();
+      setTimeout(() => setNotification(null), 5000);
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
     fetchPendingCourses();
   }, []);
 
@@ -98,7 +126,21 @@ export default function AdminUsers() {
   return (
     <div style={{marginTop: 40}}>
       <h2 style={{color:'white'}}>Admin Panel</h2>
-      
+
+      {/* WebSocket Notification */}
+      {notification && (
+        <div style={{
+          background: '#28a745',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: 8,
+          marginBottom: 20,
+          animation: 'fadeIn 0.3s'
+        }}>
+          {notification}
+        </div>
+      )}
+
       {/* Tabs */}
       <div style={{ marginBottom: 20, display: 'flex', gap: 10 }}>
         <button 
