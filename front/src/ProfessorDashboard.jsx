@@ -57,7 +57,6 @@ export default function ProfessorDashboard({ user }) {
     e.preventDefault();
     try {
       await api.post('/tasks/', { ...taskForm, course_id: selectedCourse.id });
-      alert('Zadatak kreiran!');
       setShowTaskForm(false);
       setTaskForm({ title: '', description: '', deadline: '' });
       const tasksRes = await api.get(`/tasks/course/${selectedCourse.id}`);
@@ -77,13 +76,9 @@ export default function ProfessorDashboard({ user }) {
   };
 
   const enrollStudents = async () => {
-    if (selectedStudentIds.length === 0) {
-      alert('Izaberite bar jednog studenta');
-      return;
-    }
+    if (selectedStudentIds.length === 0) return;
     try {
       await api.post(`/courses/${selectedCourse.id}/enroll`, { student_ids: selectedStudentIds });
-      alert('Studenti dodati!');
       setShowEnrollForm(false);
       setSelectedStudentIds([]);
       const studentsRes = await api.get(`/courses/${selectedCourse.id}/students`);
@@ -103,20 +98,15 @@ export default function ProfessorDashboard({ user }) {
 
   const uploadMaterial = async (e) => {
     e.preventDefault();
-    if (!materialFile) {
-      alert('Izaberite PDF fajl');
-      return;
-    }
+    if (!materialFile) return;
     const formData = new FormData();
     formData.append('file', materialFile);
     try {
       await api.post(`/courses/${selectedCourse.id}/material`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      alert('Materijal okačen!');
       setShowMaterialForm(false);
       setMaterialFile(null);
-      // Refresh course data
       fetchCourses();
       const res = await api.get('/courses/my');
       const updatedCourse = res.data.find(c => c.id === selectedCourse.id);
@@ -134,7 +124,6 @@ export default function ProfessorDashboard({ user }) {
   const saveEdit = async () => {
     try {
       await api.put(`/courses/${selectedCourse.id}`, editForm);
-      alert('Kurs ažuriran!');
       setEditMode(false);
       fetchCourses();
       setSelectedCourse({ ...selectedCourse, ...editForm });
@@ -147,7 +136,6 @@ export default function ProfessorDashboard({ user }) {
     if (!window.confirm(`Da li ste sigurni da želite obrisati kurs "${selectedCourse.name}"?`)) return;
     try {
       await api.delete(`/courses/${selectedCourse.id}`);
-      alert('Kurs obrisan!');
       setSelectedCourse(null);
       fetchCourses();
     } catch (e) {
@@ -159,7 +147,6 @@ export default function ProfessorDashboard({ user }) {
     e.preventDefault();
     try {
       await api.post('/courses/', newCourseForm);
-      alert('Zahtev za kurs poslat! Čeka odobrenje administratora.');
       setShowNewCourseForm(false);
       setNewCourseForm({ name: '', description: '' });
       fetchCourses();
@@ -178,14 +165,12 @@ export default function ProfessorDashboard({ user }) {
     }
   };
 
-  const gradeSubmission = async (e) => {
+  const handleGradeSubmission = async (e) => {
     e.preventDefault();
     try {
       await api.post(`/tasks/submissions/${gradingSubmission.id}/grade`, gradeForm);
-      alert('Ocena uneta!');
       setGradingSubmission(null);
       setGradeForm({ grade: '', feedback: '' });
-      // Refresh submissions
       const res = await api.get(`/tasks/${selectedTask.id}/submissions`);
       setSubmissions(res.data);
     } catch (e) {
@@ -193,379 +178,616 @@ export default function ProfessorDashboard({ user }) {
     }
   };
 
+  const getStatusBadge = (status) => {
+    const styles = {
+      pending: { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', text: '⏳ Na čekanju' },
+      accepted: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', text: '✓ Aktivan' },
+      rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', text: '✕ Odbijen' }
+    };
+    const s = styles[status] || styles.pending;
+    return (
+      <span style={{
+        display: 'inline-flex',
+        padding: '0.25rem 0.75rem',
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        borderRadius: '100px',
+        background: s.bg,
+        color: s.color
+      }}>
+        {s.text}
+      </span>
+    );
+  };
+
+  const stats = {
+    total: courses.length,
+    active: courses.filter(c => c.status === 'accepted').length,
+    pending: courses.filter(c => c.status === 'pending').length,
+    tasks: tasks.length
+  };
+
   return (
-    <div style={{ padding: 20, color: 'white' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2>Moji Kursevi</h2>
-        <button 
+    <div>
+      {/* Stats Cards */}
+      <div className="stat-cards">
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon blue">📚</div>
+          </div>
+          <div className="stat-card-value">{stats.total}</div>
+          <div className="stat-card-label">Ukupno kurseva</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon green">✓</div>
+          </div>
+          <div className="stat-card-value">{stats.active}</div>
+          <div className="stat-card-label">Aktivnih kurseva</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon orange">⏳</div>
+          </div>
+          <div className="stat-card-value">{stats.pending}</div>
+          <div className="stat-card-label">Na čekanju</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div className="stat-card-icon purple">📝</div>
+          </div>
+          <div className="stat-card-value">{stats.tasks}</div>
+          <div className="stat-card-label">Zadataka</div>
+        </div>
+      </div>
+
+      {/* Header with New Course Button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-50)' }}>
+          Moji kursevi
+        </h3>
+        <button
           onClick={() => setShowNewCourseForm(!showNewCourseForm)}
-          style={{ padding: '10px 20px', background: '#28a745', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', fontSize: 14 }}
+          className="btn btn-primary"
         >
-          {showNewCourseForm ? 'Otkaži' : '+ Novi zahtev za kurs'}
+          {showNewCourseForm ? '✕ Zatvori' : '+ Novi kurs'}
         </button>
       </div>
 
+      {/* New Course Form */}
       {showNewCourseForm && (
-        <div style={{ background: '#222', padding: 20, borderRadius: 8, marginBottom: 20 }}>
-          <h3>Kreiraj novi kurs</h3>
+        <div style={{
+          background: 'var(--gray-900)',
+          border: '1px solid var(--gray-800)',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          marginBottom: '1.5rem'
+        }}>
+          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: '600', color: 'var(--gray-100)' }}>
+            Kreiraj zahtev za novi kurs
+          </h4>
           <form onSubmit={createCourseRequest}>
-            <input
-              placeholder="Naziv kursa"
-              value={newCourseForm.name}
-              onChange={e => setNewCourseForm({...newCourseForm, name: e.target.value})}
-              required
-              style={{ width: '100%', padding: 10, marginBottom: 10 }}
-            />
-            <textarea
-              placeholder="Opis kursa"
-              value={newCourseForm.description}
-              onChange={e => setNewCourseForm({...newCourseForm, description: e.target.value})}
-              required
-              style={{ width: '100%', padding: 10, marginBottom: 10, minHeight: 80 }}
-            />
-            <button type="submit" style={{ padding: '10px 20px', background: '#007bff', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}>
-              Pošalji zahtev
-            </button>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-300)' }}>
+                Naziv kursa
+              </label>
+              <input
+                placeholder="Unesite naziv kursa"
+                value={newCourseForm.name}
+                onChange={e => setNewCourseForm({ ...newCourseForm, name: e.target.value })}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-300)' }}>
+                Opis kursa
+              </label>
+              <textarea
+                placeholder="Opišite sadržaj kursa..."
+                value={newCourseForm.description}
+                onChange={e => setNewCourseForm({ ...newCourseForm, description: e.target.value })}
+                required
+                style={{ minHeight: '100px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button type="submit" className="btn btn-primary">Pošalji zahtev</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowNewCourseForm(false)}>
+                Otkaži
+              </button>
+            </div>
           </form>
         </div>
       )}
-      
-      <div style={{ display: 'flex', gap: 20 }}>
-        <div style={{ flex: 1, background: '#222', padding: 16, borderRadius: 8 }}>
-          <h3>Kursevi</h3>
-          {courses.map(course => (
-            <div
-              key={course.id}
-              onClick={() => selectCourse(course)}
-              style={{
-                padding: 10,
-                margin: '8px 0',
-                background: selectedCourse?.id === course.id ? '#444' : '#333',
-                cursor: 'pointer',
-                borderRadius: 4
-              }}
-            >
-              <div><strong>{course.name}</strong></div>
-              <div style={{ fontSize: 12, color: '#aaa' }}>
-                Status: {course.status === 'pending' ? '⏳ U obradi' : 
-                         course.status === 'accepted' ? '✅ Prihvaćen' : 
-                         '❌ Odbijen'}
-              </div>
-            </div>
-          ))}
-        </div>
 
-        {selectedCourse && (
-          <div style={{ flex: 2, background: '#222', padding: 16, borderRadius: 8 }}>
-            {editMode ? (
-              <div style={{ marginBottom: 20 }}>
-                <h3>Izmeni kurs</h3>
-                <input
-                  placeholder="Naziv kursa"
-                  value={editForm.name}
-                  onChange={e => setEditForm({...editForm, name: e.target.value})}
-                  style={{ width: '100%', padding: 8, marginBottom: 8 }}
-                />
-                <textarea
-                  placeholder="Opis kursa"
-                  value={editForm.description}
-                  onChange={e => setEditForm({...editForm, description: e.target.value})}
-                  style={{ width: '100%', padding: 8, marginBottom: 8, minHeight: 60 }}
-                />
-                <button onClick={saveEdit} style={{ padding: '8px 16px', background: '#28a745', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', marginRight: 8 }}>
-                  💾 Sačuvaj
-                </button>
-                <button onClick={() => setEditMode(false)} style={{ padding: '8px 16px', background: '#6c757d', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}>
-                  Otkaži
-                </button>
+      {/* Main Content - Two Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem' }}>
+        {/* Courses List */}
+        <div style={{
+          background: 'var(--gray-900)',
+          border: '1px solid var(--gray-800)',
+          borderRadius: '16px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            padding: '1rem 1.25rem',
+            borderBottom: '1px solid var(--gray-800)',
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: 'var(--gray-300)'
+          }}>
+            Lista kurseva ({courses.length})
+          </div>
+          <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+            {courses.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--gray-500)' }}>
+                Nemate kreirane kurseve
               </div>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3>{selectedCourse.name}</h3>
-                {selectedCourse.status === 'accepted' && (
-                  <div>
-                    <button onClick={startEdit} style={{ padding: '6px 12px', background: '#ffc107', border: 'none', color: 'black', borderRadius: 4, cursor: 'pointer', marginRight: 8, fontSize: 12 }}>
-                      ✏️ Izmeni
-                    </button>
-                    <button onClick={deleteCourse} style={{ padding: '6px 12px', background: '#dc3545', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
-                      🗑️ Obriši
-                    </button>
+              courses.map(course => (
+                <div
+                  key={course.id}
+                  onClick={() => selectCourse(course)}
+                  style={{
+                    padding: '1rem 1.25rem',
+                    borderBottom: '1px solid var(--gray-800)',
+                    cursor: 'pointer',
+                    background: selectedCourse?.id === course.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                    borderLeft: selectedCourse?.id === course.id ? '3px solid var(--primary-500)' : '3px solid transparent',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ fontWeight: '500', color: 'var(--gray-100)', marginBottom: '0.5rem' }}>
+                    {course.name}
                   </div>
-                )}
-              </div>
+                  {getStatusBadge(course.status)}
+                </div>
+              ))
             )}
-            
-            {selectedCourse.status === 'accepted' && !editMode && (
-              <>
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4>Studenti ({students.length})</h4>
-                    <button 
-                      onClick={() => {
-                        setShowEnrollForm(!showEnrollForm);
-                        if (!showEnrollForm) fetchAllStudents();
-                      }}
-                      style={{ padding: '6px 12px', background: '#17a2b8', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
-                    >
-                      {showEnrollForm ? 'Otkaži' : '+ Dodaj studente'}
-                    </button>
-                  </div>
+          </div>
+        </div>
 
-                  {showEnrollForm && (
-                    <div style={{ marginTop: 10, background: '#333', padding: 12, borderRadius: 8, maxHeight: 200, overflowY: 'auto' }}>
-                      <h5>Izaberi studente:</h5>
-                      {allStudents.map(student => {
-                        const isEnrolled = students.some(s => s.id === student.id);
-                        const isSelected = selectedStudentIds.includes(student.id);
-                        return (
-                          <div key={student.id} style={{ padding: 4, opacity: isEnrolled ? 0.5 : 1 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', cursor: isEnrolled ? 'not-allowed' : 'pointer' }}>
+        {/* Course Details */}
+        {selectedCourse ? (
+          <div style={{
+            background: 'var(--gray-900)',
+            border: '1px solid var(--gray-800)',
+            borderRadius: '16px',
+            overflow: 'hidden'
+          }}>
+            {/* Course Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid var(--gray-800)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              {editMode ? (
+                <div style={{ flex: 1 }}>
+                  <input
+                    value={editForm.name}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    style={{ marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: '600' }}
+                  />
+                  <textarea
+                    value={editForm.description}
+                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                    style={{ minHeight: '60px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                    <button onClick={saveEdit} className="btn btn-success btn-sm">Sačuvaj</button>
+                    <button onClick={() => setEditMode(false)} className="btn btn-secondary btn-sm">Otkaži</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-50)' }}>
+                      {selectedCourse.name}
+                    </h3>
+                    {getStatusBadge(selectedCourse.status)}
+                  </div>
+                  {selectedCourse.status === 'accepted' && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={startEdit} className="btn btn-secondary btn-sm">✏️ Izmeni</button>
+                      <button onClick={deleteCourse} className="btn btn-danger btn-sm">🗑️ Obriši</button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Course Content */}
+            <div style={{ padding: '1.5rem' }}>
+              {selectedCourse.status === 'pending' && (
+                <div style={{
+                  padding: '1rem',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.2)',
+                  borderRadius: '12px',
+                  color: '#f59e0b',
+                  textAlign: 'center'
+                }}>
+                  ⏳ Kurs čeka odobrenje administratora
+                </div>
+              )}
+
+              {selectedCourse.status === 'rejected' && (
+                <div style={{
+                  padding: '1rem',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  borderRadius: '12px',
+                  color: '#ef4444',
+                  textAlign: 'center'
+                }}>
+                  ❌ Kurs je odbijen od strane administratora
+                </div>
+              )}
+
+              {selectedCourse.status === 'accepted' && !editMode && (
+                <>
+                  {/* Students Section */}
+                  <div style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: 'var(--gray-100)' }}>
+                        👥 Studenti ({students.length})
+                      </h4>
+                      <button
+                        onClick={() => { setShowEnrollForm(!showEnrollForm); if (!showEnrollForm) fetchAllStudents(); }}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        {showEnrollForm ? 'Zatvori' : '+ Dodaj studente'}
+                      </button>
+                    </div>
+
+                    {showEnrollForm && (
+                      <div style={{
+                        background: 'var(--gray-800)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        marginBottom: '1rem',
+                        maxHeight: '200px',
+                        overflowY: 'auto'
+                      }}>
+                        {allStudents.map(student => {
+                          const isEnrolled = students.some(s => s.id === student.id);
+                          const isSelected = selectedStudentIds.includes(student.id);
+                          return (
+                            <label
+                              key={student.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '0.5rem',
+                                cursor: isEnrolled ? 'not-allowed' : 'pointer',
+                                opacity: isEnrolled ? 0.5 : 1,
+                                borderRadius: '8px',
+                                background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                              }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => !isEnrolled && toggleStudentSelection(student.id)}
                                 disabled={isEnrolled}
-                                style={{ marginRight: 8 }}
+                                style={{ marginRight: '0.75rem' }}
                               />
-                              {student.first_name} {student.last_name} ({student.email})
-                              {isEnrolled && <span style={{ marginLeft: 8, fontSize: 10, color: '#28a745' }}>✓ Već upisan</span>}
+                              <span style={{ color: 'var(--gray-200)' }}>
+                                {student.first_name} {student.last_name}
+                              </span>
+                              <span style={{ marginLeft: '0.5rem', color: 'var(--gray-500)', fontSize: '0.8125rem' }}>
+                                ({student.email})
+                              </span>
+                              {isEnrolled && (
+                                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#10b981' }}>✓ Upisan</span>
+                              )}
                             </label>
-                          </div>
-                        );
-                      })}
-                      <button 
-                        onClick={enrollStudents}
-                        disabled={selectedStudentIds.length === 0}
-                        style={{ marginTop: 10, padding: '8px 16px', background: selectedStudentIds.length > 0 ? '#28a745' : '#555', border: 'none', color: 'white', borderRadius: 4, cursor: selectedStudentIds.length > 0 ? 'pointer' : 'not-allowed' }}
-                      >
-                        Dodaj ({selectedStudentIds.length})
-                      </button>
-                    </div>
-                  )}
-
-                  <div style={{ marginTop: 10 }}>
-                    {students.map(s => (
-                      <div key={s.id} style={{ padding: 4 }}>
-                        {s.first_name} {s.last_name} ({s.email})
+                          );
+                        })}
+                        <button
+                          onClick={enrollStudents}
+                          disabled={selectedStudentIds.length === 0}
+                          className="btn btn-primary btn-sm"
+                          style={{ marginTop: '0.75rem' }}
+                        >
+                          Dodaj izabrane ({selectedStudentIds.length})
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    )}
 
-                <div style={{ marginBottom: 20 }}>
-                  <h4>Materijali</h4>
-                  <button 
-                    onClick={() => setShowMaterialForm(!showMaterialForm)}
-                    style={{ marginBottom: 10, padding: '8px 16px', background: '#6f42c1', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    {showMaterialForm ? 'Otkaži' : '📄 Okači materijal (PDF)'}
-                  </button>
-
-                  {showMaterialForm && (
-                    <form onSubmit={uploadMaterial} style={{ marginBottom: 20, background: '#333', padding: 16, borderRadius: 8 }}>
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={e => setMaterialFile(e.target.files[0])}
-                        required
-                        style={{ marginBottom: 8, color: 'white' }}
-                      />
-                      <button type="submit" style={{ padding: '8px 16px', background: '#007bff', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}>
-                        Upload PDF
-                      </button>
-                    </form>
-                  )}
-
-                  {selectedCourse.material_path && (
-                    <a 
-                      href={`http://127.0.0.1:5000/courses/${selectedCourse.id}/material/download`}
-                      download
-                      style={{ 
-                        display: 'inline-block',
-                        padding: 8, 
-                        background: '#333', 
-                        borderRadius: 4,
-                        color: '#4fc3f7',
-                        textDecoration: 'none'
-                      }}
-                    >
-                      📄 {selectedCourse.material_path.split('/').pop()} - Preuzmi
-                    </a>
-                  )}
-                </div>
-
-                <div>
-                  <h4>Zadaci</h4>
-                  <button 
-                    onClick={() => setShowTaskForm(!showTaskForm)}
-                    style={{ marginBottom: 10, padding: '8px 16px', background: '#28a745', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    {showTaskForm ? 'Otkaži' : '+ Novi zadatak'}
-                  </button>
-
-                  {showTaskForm && (
-                    <form onSubmit={createTask} style={{ marginBottom: 20, background: '#333', padding: 16, borderRadius: 8 }}>
-                      <input
-                        placeholder="Naziv zadatka"
-                        value={taskForm.title}
-                        onChange={e => setTaskForm({...taskForm, title: e.target.value})}
-                        required
-                        style={{ width: '100%', padding: 8, marginBottom: 8 }}
-                      />
-                      <textarea
-                        placeholder="Opis zadatka"
-                        value={taskForm.description}
-                        onChange={e => setTaskForm({...taskForm, description: e.target.value})}
-                        required
-                        style={{ width: '100%', padding: 8, marginBottom: 8, minHeight: 80 }}
-                      />
-                      <input
-                        type="datetime-local"
-                        value={taskForm.deadline}
-                        onChange={e => setTaskForm({...taskForm, deadline: e.target.value})}
-                        required
-                        style={{ width: '100%', padding: 8, marginBottom: 8 }}
-                      />
-                      <button type="submit" style={{ padding: '8px 16px', background: '#007bff', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}>
-                        Kreiraj zadatak
-                      </button>
-                    </form>
-                  )}
-
-                  {tasks.map(task => (
-                    <div key={task.id} style={{ background: '#333', padding: 12, marginBottom: 8, borderRadius: 4 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ flex: 1 }}>
-                          <div><strong>{task.title}</strong></div>
-                          <div style={{ fontSize: 12, color: '#aaa' }}>{task.description}</div>
-                          <div style={{ fontSize: 12, color: '#aaa' }}>Rok: {new Date(task.deadline).toLocaleString()}</div>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {students.map(s => (
+                        <div key={s.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.75rem',
+                          background: 'var(--gray-800)',
+                          borderRadius: '8px'
+                        }}>
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: 'white'
+                          }}>
+                            {s.first_name?.[0]}{s.last_name?.[0]}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: '500', color: 'var(--gray-100)', fontSize: '0.875rem' }}>
+                              {s.first_name} {s.last_name}
+                            </div>
+                            <div style={{ color: 'var(--gray-500)', fontSize: '0.75rem' }}>{s.email}</div>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => viewTaskSubmissions(task)}
-                          style={{
-                            padding: '6px 12px',
-                            background: '#17a2b8',
-                            border: 'none',
-                            color: 'white',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontSize: 12
-                          }}
-                        >
-                          Submissions
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Submissions Modal */}
-                {selectedTask && (
-                  <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.8)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 1000
-                  }}>
-                    <div style={{
-                      background: '#222',
-                      padding: 24,
-                      borderRadius: 8,
-                      maxWidth: 600,
-                      width: '90%',
-                      maxHeight: '80vh',
-                      overflowY: 'auto'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h3 style={{ margin: 0 }}>Submissions: {selectedTask.title}</h3>
-                        <button
-                          onClick={() => { setSelectedTask(null); setSubmissions([]); }}
-                          style={{ padding: '4px 12px', background: '#dc3545', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          ✕ Zatvori
-                        </button>
-                      </div>
-
-                      {submissions.length === 0 ? (
-                        <p style={{ color: '#aaa' }}>Nema submissions za ovaj zadatak</p>
-                      ) : (
-                        submissions.map(sub => (
-                          <div key={sub.id} style={{ background: '#333', padding: 12, marginBottom: 12, borderRadius: 4 }}>
-                            <p style={{ margin: 0 }}>
-                              <strong>{sub.student.first_name} {sub.student.last_name}</strong> ({sub.student.email})
-                            </p>
-                            <p style={{ fontSize: 12, color: '#aaa', margin: '4px 0' }}>
-                              Predato: {new Date(sub.submitted_at).toLocaleString()}
-                            </p>
-                            {sub.grade !== null ? (
-                              <>
-                                <p style={{ margin: '8px 0', fontSize: 16, fontWeight: 'bold', color: '#28a745' }}>
-                                  Ocena: {sub.grade}
-                                </p>
-                                {sub.feedback && <p style={{ fontSize: 12, color: '#aaa' }}>Komentar: {sub.feedback}</p>}
-                              </>
-                            ) : (
-                              <>
-                                {gradingSubmission?.id === sub.id ? (
-                                  <form onSubmit={gradeSubmission} style={{ marginTop: 8 }}>
-                                    <input
-                                      type="number"
-                                      placeholder="Ocena (1-10)"
-                                      value={gradeForm.grade}
-                                      onChange={e => setGradeForm({...gradeForm, grade: e.target.value})}
-                                      required
-                                      min="1"
-                                      max="10"
-                                      style={{ width: '100%', padding: 6, marginBottom: 6 }}
-                                    />
-                                    <textarea
-                                      placeholder="Komentar (opciono)"
-                                      value={gradeForm.feedback}
-                                      onChange={e => setGradeForm({...gradeForm, feedback: e.target.value})}
-                                      style={{ width: '100%', padding: 6, marginBottom: 6, minHeight: 50 }}
-                                    />
-                                    <button type="submit" style={{ padding: '6px 12px', background: '#28a745', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', marginRight: 8 }}>
-                                      Sačuvaj
-                                    </button>
-                                    <button type="button" onClick={() => { setGradingSubmission(null); setGradeForm({ grade: '', feedback: '' }); }} style={{ padding: '6px 12px', background: '#6c757d', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer' }}>
-                                      Otkaži
-                                    </button>
-                                  </form>
-                                ) : (
-                                  <button
-                                    onClick={() => setGradingSubmission(sub)}
-                                    style={{ marginTop: 8, padding: '6px 12px', background: '#ffc107', border: 'none', color: 'black', borderRadius: 4, cursor: 'pointer' }}
-                                  >
-                                    Oceni
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))
-                      )}
+                      ))}
                     </div>
                   </div>
-                )}
-              </>
-            )}
 
-            {selectedCourse.status === 'pending' && (
-              <div style={{ color: '#ffc107' }}>⏳ Kurs čeka odobrenje administratora</div>
-            )}
+                  {/* Materials Section */}
+                  <div style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: 'var(--gray-100)' }}>
+                        📄 Materijali
+                      </h4>
+                      <button
+                        onClick={() => setShowMaterialForm(!showMaterialForm)}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        {showMaterialForm ? 'Zatvori' : '+ Dodaj materijal'}
+                      </button>
+                    </div>
 
-            {selectedCourse.status === 'rejected' && (
-              <div style={{ color: '#dc3545' }}>❌ Kurs je odbijen</div>
-            )}
+                    {showMaterialForm && (
+                      <form onSubmit={uploadMaterial} style={{
+                        background: 'var(--gray-800)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        marginBottom: '1rem'
+                      }}>
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          onChange={e => setMaterialFile(e.target.files[0])}
+                          required
+                          style={{ marginBottom: '0.75rem' }}
+                        />
+                        <button type="submit" className="btn btn-primary btn-sm">Upload PDF</button>
+                      </form>
+                    )}
+
+                    {selectedCourse.material_path && (
+                      <a
+                        href={`http://127.0.0.1:5000/courses/${selectedCourse.id}/material/download`}
+                        download
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.75rem 1rem',
+                          background: 'var(--gray-800)',
+                          borderRadius: '8px',
+                          color: 'var(--primary-400)',
+                          textDecoration: 'none',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        📄 {selectedCourse.material_path.split('/').pop()} - Preuzmi
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Tasks Section */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: 'var(--gray-100)' }}>
+                        📝 Zadaci ({tasks.length})
+                      </h4>
+                      <button
+                        onClick={() => setShowTaskForm(!showTaskForm)}
+                        className="btn btn-primary btn-sm"
+                      >
+                        {showTaskForm ? 'Zatvori' : '+ Novi zadatak'}
+                      </button>
+                    </div>
+
+                    {showTaskForm && (
+                      <form onSubmit={createTask} style={{
+                        background: 'var(--gray-800)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        marginBottom: '1rem'
+                      }}>
+                        <input
+                          placeholder="Naziv zadatka"
+                          value={taskForm.title}
+                          onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
+                          required
+                          style={{ marginBottom: '0.75rem' }}
+                        />
+                        <textarea
+                          placeholder="Opis zadatka"
+                          value={taskForm.description}
+                          onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
+                          required
+                          style={{ marginBottom: '0.75rem', minHeight: '80px' }}
+                        />
+                        <input
+                          type="datetime-local"
+                          value={taskForm.deadline}
+                          onChange={e => setTaskForm({ ...taskForm, deadline: e.target.value })}
+                          required
+                          style={{ marginBottom: '0.75rem' }}
+                        />
+                        <button type="submit" className="btn btn-primary btn-sm">Kreiraj zadatak</button>
+                      </form>
+                    )}
+
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      {tasks.map(task => (
+                        <div key={task.id} style={{
+                          background: 'var(--gray-800)',
+                          borderRadius: '12px',
+                          padding: '1rem'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '500', color: 'var(--gray-100)', marginBottom: '0.25rem' }}>
+                                {task.title}
+                              </div>
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--gray-400)', marginBottom: '0.5rem' }}>
+                                {task.description}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                                Rok: {new Date(task.deadline).toLocaleString('sr-RS')}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => viewTaskSubmissions(task)}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              Predaje
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            background: 'var(--gray-900)',
+            border: '1px solid var(--gray-800)',
+            borderRadius: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '400px'
+          }}>
+            <div style={{ textAlign: 'center', color: 'var(--gray-500)' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📚</div>
+              <div>Izaberite kurs sa leve strane</div>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Submissions Modal */}
+      {selectedTask && (
+        <div className="modal-overlay" onClick={() => { setSelectedTask(null); setSubmissions([]); }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Predaje: {selectedTask.title}</h3>
+              <button className="modal-close" onClick={() => { setSelectedTask(null); setSubmissions([]); }}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              {submissions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
+                  Nema predaja za ovaj zadatak
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  {submissions.map(sub => (
+                    <div key={sub.id} style={{
+                      background: 'var(--gray-800)',
+                      borderRadius: '12px',
+                      padding: '1rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '8px',
+                          background: 'linear-gradient(135deg, var(--primary-500), var(--primary-700))',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: 'white'
+                        }}>
+                          {sub.student.first_name?.[0]}{sub.student.last_name?.[0]}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '500', color: 'var(--gray-100)' }}>
+                            {sub.student.first_name} {sub.student.last_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                            Predato: {new Date(sub.submitted_at).toLocaleString('sr-RS')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {sub.grade !== null ? (
+                        <div style={{
+                          padding: '0.75rem',
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          borderRadius: '8px'
+                        }}>
+                          <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#10b981' }}>
+                            Ocena: {sub.grade}
+                          </div>
+                          {sub.feedback && (
+                            <div style={{ fontSize: '0.875rem', color: 'var(--gray-400)', marginTop: '0.5rem' }}>
+                              {sub.feedback}
+                            </div>
+                          )}
+                        </div>
+                      ) : gradingSubmission?.id === sub.id ? (
+                        <form onSubmit={handleGradeSubmission}>
+                          <input
+                            type="number"
+                            placeholder="Ocena (1-10)"
+                            value={gradeForm.grade}
+                            onChange={e => setGradeForm({ ...gradeForm, grade: e.target.value })}
+                            required
+                            min="1"
+                            max="10"
+                            style={{ marginBottom: '0.5rem' }}
+                          />
+                          <textarea
+                            placeholder="Komentar (opciono)"
+                            value={gradeForm.feedback}
+                            onChange={e => setGradeForm({ ...gradeForm, feedback: e.target.value })}
+                            style={{ marginBottom: '0.5rem', minHeight: '60px' }}
+                          />
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button type="submit" className="btn btn-success btn-sm">Sačuvaj</button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => { setGradingSubmission(null); setGradeForm({ grade: '', feedback: '' }); }}
+                            >
+                              Otkaži
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button onClick={() => setGradingSubmission(sub)} className="btn btn-primary btn-sm">
+                          Oceni
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
