@@ -7,7 +7,7 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get("DATABASE_URL")
-        or "mysql+pymysql://root:Password123@localhost:3306/drs_platforma"
+        or "mysql+pymysql://root:1234@localhost:3306/drs_platforma"
     )
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False

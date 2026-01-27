@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
 
-export default function ProfessorDashboard({ user }) {
+export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -26,6 +26,26 @@ export default function ProfessorDashboard({ user }) {
   useEffect(() => {
     fetchCourses();
   }, []);
+
+  // Učitaj sve zadatke kada se promeni activeView na 'tasks'
+  useEffect(() => {
+    const fetchAllTasks = async () => {
+      if (activeView === 'tasks' && courses.length > 0) {
+        const allTasksTemp = [];
+        for (const course of courses.filter(c => c.status === 'accepted')) {
+          try {
+            const res = await api.get(`/tasks/course/${course.id}`);
+            const courseTasks = res.data.map(t => ({ ...t, courseName: course.name }));
+            allTasksTemp.push(...courseTasks);
+          } catch (e) {
+            console.error(`Error fetching tasks for course ${course.id}:`, e);
+          }
+        }
+        setTasks(allTasksTemp);
+      }
+    };
+    fetchAllTasks();
+  }, [activeView, courses]);
 
   const fetchCourses = async () => {
     try {
@@ -207,6 +227,262 @@ export default function ProfessorDashboard({ user }) {
     tasks: tasks.length
   };
 
+  // Za 'dashboard' view - prikaži samo statistiku
+  if (activeView === 'dashboard') {
+    return (
+      <div>
+        {/* Stats Cards */}
+        <div className="stat-cards">
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon blue">📚</div>
+            </div>
+            <div className="stat-card-value">{stats.total}</div>
+            <div className="stat-card-label">Ukupno kurseva</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon green">✓</div>
+            </div>
+            <div className="stat-card-value">{stats.active}</div>
+            <div className="stat-card-label">Aktivnih kurseva</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon orange">⏳</div>
+            </div>
+            <div className="stat-card-value">{stats.pending}</div>
+            <div className="stat-card-label">Na čekanju</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon purple">📝</div>
+            </div>
+            <div className="stat-card-value">{stats.tasks}</div>
+            <div className="stat-card-label">Zadataka</div>
+          </div>
+        </div>
+
+        {/* Quick Overview */}
+        <div style={{
+          background: 'var(--gray-900)',
+          border: '1px solid var(--gray-800)',
+          borderRadius: '16px',
+          padding: '2rem',
+          textAlign: 'center',
+          marginTop: '1.5rem'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📊</div>
+          <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--gray-100)' }}>Pregled</h3>
+          <p style={{ color: 'var(--gray-500)', margin: 0 }}>
+            Izaberite "Moji kursevi" ili "Zadaci" iz navigacije za upravljanje
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Za 'tasks' view - prikaži samo zadatke iz svih kurseva
+  if (activeView === 'tasks') {
+    // Grupiši zadatke po kursevima
+    const tasksByCourse = courses.filter(c => c.status === 'accepted').map(course => ({
+      course,
+      tasks: tasks.filter(t => t.course_id === course.id)
+    }));
+
+    return (
+      <div>
+        {/* Stats Cards */}
+        <div className="stat-cards">
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon purple">📝</div>
+            </div>
+            <div className="stat-card-value">{stats.tasks}</div>
+            <div className="stat-card-label">Ukupno zadataka</div>
+          </div>
+        </div>
+
+        <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-50)' }}>
+          Svi zadaci
+        </h3>
+
+        <div style={{
+          background: 'var(--gray-900)',
+          border: '1px solid var(--gray-800)',
+          borderRadius: '16px',
+          overflow: 'hidden'
+        }}>
+          {courses.filter(c => c.status === 'accepted').length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-500)' }}>
+              Nemate aktivnih kurseva sa zadacima
+            </div>
+          ) : (
+            <div style={{ padding: '1rem' }}>
+              {courses.filter(c => c.status === 'accepted').map(course => (
+                <div key={course.id} style={{ marginBottom: '1.5rem' }}>
+                  <h4 style={{
+                    margin: '0 0 1rem 0',
+                    padding: '0.75rem',
+                    background: 'var(--gray-800)',
+                    borderRadius: '8px',
+                    color: 'var(--gray-100)',
+                    fontSize: '1rem'
+                  }}>
+                    📚 {course.name}
+                  </h4>
+                  {tasks.filter(t => t.course_id === course.id).length === 0 ? (
+                    <div style={{ padding: '1rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                      Nema zadataka za ovaj kurs
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      {tasks.filter(t => t.course_id === course.id).map(task => (
+                        <div key={task.id} style={{
+                          background: 'var(--gray-800)',
+                          borderRadius: '12px',
+                          padding: '1rem'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '500', color: 'var(--gray-100)', marginBottom: '0.25rem' }}>
+                                {task.title}
+                              </div>
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--gray-400)', marginBottom: '0.5rem' }}>
+                                {task.description}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                                Rok: {new Date(task.deadline).toLocaleString('sr-RS')}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => { setSelectedCourse(course); viewTaskSubmissions(task); }}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              Predaje
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Submissions Modal */}
+        {selectedTask && (
+          <div className="modal-overlay" onClick={() => { setSelectedTask(null); setSubmissions([]); }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Predaje: {selectedTask.title}</h3>
+                <button className="modal-close" onClick={() => { setSelectedTask(null); setSubmissions([]); }}>
+                  ✕
+                </button>
+              </div>
+              <div className="modal-body">
+                {submissions.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray-500)' }}>
+                    Nema predaja za ovaj zadatak
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {submissions.map(sub => (
+                      <div key={sub.id} style={{
+                        background: 'var(--gray-800)',
+                        borderRadius: '12px',
+                        padding: '1rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(135deg, var(--primary-500), var(--primary-700))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: 'white'
+                          }}>
+                            {sub.student.first_name?.[0]}{sub.student.last_name?.[0]}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: '500', color: 'var(--gray-100)' }}>
+                              {sub.student.first_name} {sub.student.last_name}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                              Predato: {new Date(sub.submitted_at).toLocaleString('sr-RS')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Download link za .py fajl */}
+                        <a
+                          href={`http://127.0.0.1:5000/tasks/submissions/${sub.id}/download`}
+                          download
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 0.75rem',
+                            background: 'var(--gray-700)',
+                            borderRadius: '8px',
+                            color: 'var(--primary-400)',
+                            textDecoration: 'none',
+                            fontSize: '0.8125rem',
+                            marginBottom: '0.75rem'
+                          }}
+                        >
+                          📄 {sub.file_path?.split('/').pop() || sub.file_path?.split('\\').pop() || 'resenje.py'} - Preuzmi
+                        </a>
+
+                        {sub.grade !== null ? (
+                          <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#10b981' }}>
+                              Ocena: {sub.grade}
+                            </div>
+                            {sub.feedback && (
+                              <div style={{ fontSize: '0.875rem', color: 'var(--gray-400)', marginTop: '0.5rem' }}>
+                                {sub.feedback}
+                              </div>
+                            )}
+                          </div>
+                        ) : gradingSubmission?.id === sub.id ? (
+                          <form onSubmit={handleGradeSubmission}>
+                            <input type="number" placeholder="Ocena (1-10)" value={gradeForm.grade}
+                              onChange={e => setGradeForm({ ...gradeForm, grade: e.target.value })}
+                              required min="1" max="10" style={{ marginBottom: '0.5rem' }} />
+                            <textarea placeholder="Komentar (opciono)" value={gradeForm.feedback}
+                              onChange={e => setGradeForm({ ...gradeForm, feedback: e.target.value })}
+                              style={{ marginBottom: '0.5rem', minHeight: '60px' }} />
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button type="submit" className="btn btn-success btn-sm">Sačuvaj</button>
+                              <button type="button" className="btn btn-secondary btn-sm"
+                                onClick={() => { setGradingSubmission(null); setGradeForm({ grade: '', feedback: '' }); }}>
+                                Otkaži
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <button onClick={() => setGradingSubmission(sub)} className="btn btn-primary btn-sm">Oceni</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Za 'courses' view - prikaži pun prikaz kurseva
   return (
     <div>
       {/* Stats Cards */}
@@ -730,6 +1006,26 @@ export default function ProfessorDashboard({ user }) {
                           </div>
                         </div>
                       </div>
+
+                      {/* Download link za .py fajl */}
+                      <a
+                        href={`http://127.0.0.1:5000/tasks/submissions/${sub.id}/download`}
+                        download
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.5rem 0.75rem',
+                          background: 'var(--gray-700)',
+                          borderRadius: '8px',
+                          color: 'var(--primary-400)',
+                          textDecoration: 'none',
+                          fontSize: '0.8125rem',
+                          marginBottom: '0.75rem'
+                        }}
+                      >
+                        📄 {sub.file_path?.split('/').pop() || sub.file_path?.split('\\').pop() || 'resenje.py'} - Preuzmi
+                      </a>
 
                       {sub.grade !== null ? (
                         <div style={{

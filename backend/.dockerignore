@@ -29,8 +29,7 @@ pytest.ini
 .coverage
 
 # Pipenv
-Pipfile
-Pipfile.lock
+# Pipfile and Pipfile.lock are needed for Docker build
 
 # Uploads (will be mounted as volume)
 uploads/

@@ -13,15 +13,19 @@ export default function Dashboard() {
 
   const [activeView, setActiveView] = React.useState('dashboard');
   const [userState, setUserState] = React.useState(user);
+  const [isLoading, setIsLoading] = React.useState(!user);
 
   React.useEffect(() => {
     const fetchUser = async () => {
+      setIsLoading(true);
       try {
         const res = await api.get('/users/me');
         setUserState(res.data.user);
       } catch (e) {
         console.error('Failed to fetch user:', e);
         navigate('/', { replace: true });
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -32,8 +36,21 @@ export default function Dashboard() {
     }
   }, [user, navigate]);
 
-  if (!user) {
-    return null;
+  if (isLoading || !userState) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--gray-950)'
+      }}>
+        <div style={{ textAlign: 'center', color: 'var(--gray-400)' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+          <div>Učitavanje...</div>
+        </div>
+      </div>
+    );
   }
 
   const handleLogout = async () => {
@@ -95,15 +112,15 @@ export default function Dashboard() {
     }
 
     if (userState.role === 'admin') {
-      return <AdminUsers />;
+      return <AdminUsers activeView={activeView} />;
     }
 
     if (userState.role === 'professor') {
-      return <ProfessorDashboard user={userState} />;
+      return <ProfessorDashboard user={userState} activeView={activeView} />;
     }
 
     if (userState.role === 'student') {
-      return <StudentDashboard user={userState} />;
+      return <StudentDashboard user={userState} activeView={activeView} />;
     }
 
     return null;
@@ -112,12 +129,22 @@ export default function Dashboard() {
   const getHeaderTitle = () => {
     if (activeView === 'profile') return 'Izmena profila';
 
-    const titles = {
+    const viewTitles = {
+      dashboard: 'Pregled',
+      users: 'Upravljanje korisnicima',
+      courses: 'Moji kursevi',
+      tasks: 'Zadaci',
+      grades: 'Ocene'
+    };
+
+    if (viewTitles[activeView]) return viewTitles[activeView];
+
+    const roleTitles = {
       admin: 'Admin Panel',
       professor: 'Panel profesora',
       student: 'Panel studenta'
     };
-    return titles[userState.role] || 'Dashboard';
+    return roleTitles[userState.role] || 'Dashboard';
   };
 
   return (

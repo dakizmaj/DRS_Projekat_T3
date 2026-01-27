@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
 
-export default function StudentDashboard({ user }) {
+export default function StudentDashboard({ user, activeView = 'dashboard' }) {
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [submissionFile, setSubmissionFile] = useState(null);
@@ -15,9 +15,11 @@ export default function StudentDashboard({ user }) {
     setLoading(true);
     try {
       const res = await api.get('/tasks/my');
-      setTasks(res.data);
+      // Osiguraj da je res.data niz
+      setTasks(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Error fetching tasks:', e);
+      setTasks([]);
     }
     setLoading(false);
   };
@@ -43,18 +45,173 @@ export default function StudentDashboard({ user }) {
 
   const stats = {
     total: tasks.length,
-    submitted: tasks.filter(t => t.submission !== null).length,
-    graded: tasks.filter(t => t.submission?.grade !== null).length,
-    pending: tasks.filter(t => t.submission === null).length
+    submitted: tasks.filter(t => t.submission != null).length,
+    graded: tasks.filter(t => t.submission != null && t.submission.grade != null).length,
+    pending: tasks.filter(t => t.submission == null).length
   };
 
   const avgGrade = () => {
-    const gradedTasks = tasks.filter(t => t.submission?.grade !== null);
+    const gradedTasks = tasks.filter(t => t.submission != null && t.submission.grade != null);
     if (gradedTasks.length === 0) return '-';
-    const sum = gradedTasks.reduce((acc, t) => acc + t.submission.grade, 0);
+    const sum = gradedTasks.reduce((acc, t) => acc + (t.submission?.grade || 0), 0);
     return (sum / gradedTasks.length).toFixed(1);
   };
 
+  // Za 'dashboard' view - samo statistika
+  if (activeView === 'dashboard') {
+    return (
+      <div>
+        {/* Stats Cards */}
+        <div className="stat-cards">
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon blue">📝</div>
+            </div>
+            <div className="stat-card-value">{stats.total}</div>
+            <div className="stat-card-label">Ukupno zadataka</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon green">✓</div>
+            </div>
+            <div className="stat-card-value">{stats.submitted}</div>
+            <div className="stat-card-label">Predatih</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon orange">⏳</div>
+            </div>
+            <div className="stat-card-value">{stats.pending}</div>
+            <div className="stat-card-label">Za predaju</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon purple">📊</div>
+            </div>
+            <div className="stat-card-value">{avgGrade()}</div>
+            <div className="stat-card-label">Prosek ocena</div>
+          </div>
+        </div>
+
+        {/* Quick Overview */}
+        <div style={{
+          background: 'var(--gray-900)',
+          border: '1px solid var(--gray-800)',
+          borderRadius: '16px',
+          padding: '2rem',
+          textAlign: 'center',
+          marginTop: '1.5rem'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📊</div>
+          <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--gray-100)' }}>Pregled</h3>
+          <p style={{ color: 'var(--gray-500)', margin: 0 }}>
+            Izaberite "Moji zadaci" ili "Ocene" iz navigacije za detalje
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Za 'grades' view - samo ocene
+  if (activeView === 'grades') {
+    const gradedTasks = tasks.filter(t => t.submission != null && t.submission.grade != null);
+
+    return (
+      <div>
+        {/* Stats Cards */}
+        <div className="stat-cards">
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon green">✓</div>
+            </div>
+            <div className="stat-card-value">{stats.graded}</div>
+            <div className="stat-card-label">Ocenjenih zadataka</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon purple">📊</div>
+            </div>
+            <div className="stat-card-value">{avgGrade()}</div>
+            <div className="stat-card-label">Prosek ocena</div>
+          </div>
+        </div>
+
+        <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-50)' }}>
+          Moje ocene
+        </h3>
+
+        <div style={{
+          background: 'var(--gray-900)',
+          border: '1px solid var(--gray-800)',
+          borderRadius: '16px',
+          overflow: 'hidden'
+        }}>
+          {gradedTasks.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--gray-500)' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📈</div>
+              Nemate još ocenjenih zadataka
+            </div>
+          ) : (
+            <div style={{ padding: '1rem' }}>
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {gradedTasks.map(task => (
+                  <div key={task.id} style={{
+                    background: 'var(--gray-800)',
+                    borderRadius: '12px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem'
+                  }}>
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.5rem',
+                      fontWeight: '700',
+                      color: 'white',
+                      flexShrink: 0
+                    }}>
+                      {task.submission?.grade ?? '-'}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        padding: '0.2rem 0.5rem',
+                        fontSize: '0.625rem',
+                        fontWeight: '500',
+                        borderRadius: '100px',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        color: 'var(--primary-400)',
+                        marginBottom: '0.5rem',
+                        textTransform: 'uppercase'
+                      }}>
+                        {task.course_name || 'Kurs'}
+                      </span>
+                      <div style={{ fontWeight: '600', color: 'var(--gray-100)', marginBottom: '0.25rem' }}>
+                        {task.title}
+                      </div>
+                      {task.submission?.feedback && (
+                        <div style={{ fontSize: '0.875rem', color: 'var(--gray-400)' }}>
+                          "{task.submission.feedback}"
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Za 'tasks' view - pun prikaz zadataka
   return (
     <div>
       {/* Stats Cards */}
@@ -127,10 +284,11 @@ export default function StudentDashboard({ user }) {
           <div style={{ padding: '1rem' }}>
             <div style={{ display: 'grid', gap: '1rem' }}>
               {tasks.map(task => {
-                const isSubmitted = task.submission !== null;
-                const isGraded = isSubmitted && task.submission.grade !== null;
-                const deadline = new Date(task.deadline);
-                const isOverdue = deadline < new Date() && !isSubmitted;
+                const isSubmitted = task.submission != null;
+                const isGraded = isSubmitted && task.submission?.grade != null;
+                const deadline = task.deadline ? new Date(task.deadline) : new Date();
+                const isValidDeadline = !isNaN(deadline.getTime());
+                const isOverdue = isValidDeadline && deadline < new Date() && !isSubmitted;
 
                 let borderColor = 'var(--gray-800)';
                 if (isOverdue) borderColor = 'var(--error-500)';
@@ -163,7 +321,7 @@ export default function StudentDashboard({ user }) {
                             textTransform: 'uppercase',
                             letterSpacing: '0.025em'
                           }}>
-                            {task.course_name}
+                            {task.course_name || 'Nepoznat kurs'}
                           </span>
 
                           {/* Title */}
@@ -188,7 +346,7 @@ export default function StudentDashboard({ user }) {
                             color: isOverdue ? '#ef4444' : 'var(--gray-400)'
                           }}>
                             <span>🕐</span>
-                            <span>Rok: {deadline.toLocaleString('sr-RS')}</span>
+                            <span>Rok: {isValidDeadline ? deadline.toLocaleString('sr-RS') : 'Nije određen'}</span>
                             {isOverdue && <span style={{ fontWeight: '600', marginLeft: '0.5rem' }}>PREKORAČEN</span>}
                           </div>
                         </div>
@@ -216,7 +374,7 @@ export default function StudentDashboard({ user }) {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: isGraded ? '0.75rem' : 0 }}>
                             <span style={{ color: '#10b981' }}>✓</span>
                             <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: '500' }}>
-                              Predato: {new Date(task.submission.submitted_at).toLocaleString('sr-RS')}
+                              Predato: {task.submission?.submitted_at ? new Date(task.submission.submitted_at).toLocaleString('sr-RS') : 'N/A'}
                             </span>
                           </div>
 
@@ -239,11 +397,11 @@ export default function StudentDashboard({ user }) {
                                   fontWeight: '700',
                                   color: 'white'
                                 }}>
-                                  {task.submission.grade}
+                                  {task.submission?.grade ?? '-'}
                                 </div>
                                 <div>
                                   <div style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--gray-100)' }}>
-                                    Ocena: {task.submission.grade}/10
+                                    Ocena: {task.submission?.grade ?? '-'}/10
                                   </div>
                                   {task.submission.feedback && (
                                     <div style={{ fontSize: '0.875rem', color: 'var(--gray-400)', marginTop: '0.25rem' }}>

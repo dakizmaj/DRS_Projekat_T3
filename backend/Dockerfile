@@ -28,4 +28,4 @@ RUN mkdir -p uploads/submissions
 EXPOSE 5000
 
 # Run the application
-CMD ["python", "run.py"]
+CMD ["python", "main.py"]

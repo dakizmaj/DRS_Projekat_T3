@@ -2,11 +2,23 @@ import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import api from './api';
 
-export default function AdminUsers() {
-  const [activeTab, setActiveTab] = useState('users');
+export default function AdminUsers({ activeView = 'dashboard' }) {
+  // Sinhronizuj interni tab sa spoljašnjim activeView
+  const getInitialTab = () => {
+    if (activeView === 'users') return 'users';
+    if (activeView === 'courses') return 'courses';
+    return 'users';
+  };
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const socketRef = useRef(null);
   const [notification, setNotification] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Ažuriraj tab kada se promeni activeView
+  useEffect(() => {
+    if (activeView === 'users') setActiveTab('users');
+    else if (activeView === 'courses') setActiveTab('courses');
+  }, [activeView]);
 
   // Users
   const [users, setUsers] = useState([]);
@@ -155,6 +167,81 @@ export default function AdminUsers() {
     professors: users.filter(u => u.role === 'professor').length,
     students: users.filter(u => u.role === 'student').length
   };
+
+  // Za 'dashboard' view - samo statistika
+  if (activeView === 'dashboard') {
+    return (
+      <div>
+        {/* Notification Toast */}
+        {notification && (
+          <div className="notification-toast success">
+            <span className="notification-toast-icon">🔔</span>
+            <span className="notification-toast-message">{notification}</span>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="stat-cards">
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon blue">👥</div>
+            </div>
+            <div className="stat-card-value">{stats.total}</div>
+            <div className="stat-card-label">Ukupno korisnika</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon purple">👑</div>
+            </div>
+            <div className="stat-card-value">{stats.admins}</div>
+            <div className="stat-card-label">Administratora</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon blue">🎓</div>
+            </div>
+            <div className="stat-card-value">{stats.professors}</div>
+            <div className="stat-card-label">Profesora</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-card-icon green">📚</div>
+            </div>
+            <div className="stat-card-value">{stats.students}</div>
+            <div className="stat-card-label">Studenata</div>
+          </div>
+        </div>
+
+        {/* Quick Overview */}
+        <div style={{
+          background: 'var(--gray-900)',
+          border: '1px solid var(--gray-800)',
+          borderRadius: '16px',
+          padding: '2rem',
+          textAlign: 'center',
+          marginTop: '1.5rem'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📊</div>
+          <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--gray-100)' }}>Pregled</h3>
+          <p style={{ color: 'var(--gray-500)', margin: 0 }}>
+            Izaberite "Korisnici" ili "Kursevi" iz navigacije za upravljanje
+          </p>
+          {pendingCourses.length > 0 && (
+            <div style={{
+              marginTop: '1.5rem',
+              padding: '1rem',
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.2)',
+              borderRadius: '12px',
+              color: '#f59e0b'
+            }}>
+              ⚠️ Imate {pendingCourses.length} zahtev(a) za odobrenje kurseva
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
