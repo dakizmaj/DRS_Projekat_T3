@@ -9,6 +9,7 @@ class Course(db.Model):
     description = db.Column(db.Text, nullable=False)
     
     material_path = db.Column(db.String(500), nullable=True)  # PDF materijal
+    material_name = db.Column(db.String(255), nullable=True)  # Originalno ime fajla
 
     status = db.Column(
         db.String(20),

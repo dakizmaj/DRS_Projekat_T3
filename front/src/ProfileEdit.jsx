@@ -15,8 +15,19 @@ export default function ProfileEdit({ user, onUpdate, onClose }) {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [imageKey, setImageKey] = useState(Date.now());
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    setFile(selectedFile);
+    if (selectedFile) {
+      const url = URL.createObjectURL(selectedFile);
+      setPreviewUrl(url);
+    }
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -36,6 +47,11 @@ export default function ProfileEdit({ user, onUpdate, onClose }) {
 
       const res = await api.put('/users/me', { ...form, profile_image });
       setMessage('Profil uspešno ažuriran!');
+      setImageKey(Date.now());
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
       onUpdate && onUpdate(res.data.user);
     } catch (e) {
       setMessage('Greška: ' + (e.response?.data?.error || e.message));
@@ -113,9 +129,16 @@ export default function ProfileEdit({ user, onUpdate, onClose }) {
               overflow: 'hidden',
               flexShrink: 0
             }}>
-              {user.profile_image ? (
+              {previewUrl ? (
                 <img
-                  src={`http://127.0.0.1:5000/users/profile_images/${user.profile_image}`}
+                  src={previewUrl}
+                  alt="Preview"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : user.profile_image ? (
+                <img
+                  key={imageKey}
+                  src={`http://127.0.0.1:5000/users/profile_images/${user.profile_image}?t=${imageKey}`}
                   alt="Profilna"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.textContent = getInitials(); }}
@@ -149,7 +172,7 @@ export default function ProfileEdit({ user, onUpdate, onClose }) {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={e => setFile(e.target.files[0])}
+                  onChange={handleFileChange}
                   style={{ display: 'none' }}
                 />
               </label>

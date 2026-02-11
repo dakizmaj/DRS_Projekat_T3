@@ -10,12 +10,15 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object("app.config.Config")
 
-    # CORS konfiguracija
+    # CORS konfiguracija - dozvoli sve localhost portove za razvoj
     CORS(app, 
-         origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://localhost:5175", "http://127.0.0.1:5175"],
+         origins=["http://localhost:5173", "http://127.0.0.1:5173", 
+                  "http://localhost:5174", "http://127.0.0.1:5174", 
+                  "http://localhost:5175", "http://127.0.0.1:5175"],
          supports_credentials=True,
-         allow_headers=["Content-Type", "Authorization"],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         expose_headers=["Content-Disposition"]
     )
 
     db.init_app(app)
@@ -25,6 +28,20 @@ def create_app():
     app.register_blueprint(user_bp, url_prefix='/users')
     app.register_blueprint(course_bp, url_prefix='/courses')
     app.register_blueprint(task_bp, url_prefix='/tasks')
+
+    # Dodaj CORS headere na svaki response
+    @app.after_request
+    def after_request(response):
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:5173", "http://127.0.0.1:5173", 
+                      "http://localhost:5174", "http://127.0.0.1:5174",
+                      "http://localhost:5175", "http://127.0.0.1:5175"]:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        return response
 
     socketio.init_app(app)
 

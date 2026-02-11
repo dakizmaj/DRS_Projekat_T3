@@ -179,13 +179,14 @@ def submit_task(task_id):
     if not file.filename.endswith('.py'):
         return jsonify({"message": "Only .py files allowed"}), 400
     
-    # Sačuvaj fajl
-    filename = secure_filename(file.filename)
+    # Sačuvaj fajl sa UUID-om za jedinstveno ime
+    import uuid
+    file_ext = '.py'
+    filename = f"{request.user.id}_{task_id}_{uuid.uuid4().hex}{file_ext}"
     upload_folder = os.path.join('uploads', 'submissions', str(task_id))
     os.makedirs(upload_folder, exist_ok=True)
     
-    file_path = os.path.join(upload_folder, f"{request.user.id}_{filename}")
-    file.save(file_path)
+    file_path = os.path.join(upload_folder, filename)
     
     # Kreiraj ili ažuriraj submission
     from app.models.submission import Submission
@@ -195,6 +196,13 @@ def submit_task(task_id):
     ).first()
     
     if submission:
+        # Obriši stari fajl ako postoji
+        if submission.file_path and os.path.exists(submission.file_path):
+            try:
+                os.remove(submission.file_path)
+            except:
+                pass
+        
         submission.file_path = file_path
         submission.submitted_at = datetime.now()
         submission.grade = None
@@ -207,6 +215,7 @@ def submit_task(task_id):
         )
         db.session.add(submission)
     
+    file.save(file_path)
     db.session.commit()
     
     return jsonify({
@@ -244,7 +253,8 @@ def get_submissions(task_id):
                 "id": s.student.id,
                 "first_name": s.student.first_name,
                 "last_name": s.student.last_name,
-                "email": s.student.email
+                "email": s.student.email,
+                "profile_image": s.student.profile_image
             },
             "file_path": s.file_path,
             "submitted_at": str(s.submitted_at) if s.submitted_at else None,
@@ -374,13 +384,19 @@ def download_submission(submission_id):
     if course.professor_id != request.user.id:
         return jsonify({"message": "Forbidden"}), 403
 
-    if not submission.file_path or not os.path.exists(submission.file_path):
+    if not submission.file_path:
+        return jsonify({"message": "File not found"}), 404
+    
+    # Konstruiši apsolutnu putanju do fajla
+    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), submission.file_path)
+    
+    if not os.path.exists(file_path):
         return jsonify({"message": "File not found"}), 404
 
     filename = os.path.basename(submission.file_path)
 
     return send_file(
-        submission.file_path,
+        file_path,
         as_attachment=True,
         download_name=f"{submission.student.first_name}_{submission.student.last_name}_{filename}"
     )

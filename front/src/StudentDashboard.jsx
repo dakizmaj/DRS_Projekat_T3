@@ -3,13 +3,29 @@ import api from './api';
 
 export default function StudentDashboard({ user, activeView = 'dashboard' }) {
   const [tasks, setTasks] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [submissionFile, setSubmissionFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchTasks();
-  }, []);
+    if (activeView === 'courses') {
+      fetchCourses();
+    }
+  }, [activeView]);
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/courses/enrolled');
+      setCourses(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error fetching courses:', e);
+      setCourses([]);
+    }
+    setLoading(false);
+  };
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -40,6 +56,30 @@ export default function StudentDashboard({ user, activeView = 'dashboard' }) {
       fetchTasks();
     } catch (e) {
       alert('Greška pri predaji zadatka');
+    }
+  };
+
+  const downloadMaterial = async (courseId) => {
+    try {
+      const course = courses.find(c => c.id === courseId);
+      const fileName = course?.material_name || `materijal_kurs_${courseId}.pdf`;
+      
+      const response = await api.get(`/courses/${courseId}/material/download`, {
+        responseType: 'blob'
+      });
+      
+      // Kreiraj download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Error downloading material:', e);
+      alert('Greška pri preuzimanju materijala');
     }
   };
 
@@ -207,6 +247,238 @@ export default function StudentDashboard({ user, activeView = 'dashboard' }) {
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  // Za 'courses' view - prikaz kurseva sa materijalima
+  if (activeView === 'courses') {
+    return (
+      <div>
+        <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-50)' }}>
+          Moji kursevi
+        </h3>
+
+        {loading ? (
+          <div style={{
+            background: 'var(--gray-900)',
+            border: '1px solid var(--gray-800)',
+            borderRadius: '16px',
+            padding: '3rem',
+            textAlign: 'center',
+            color: 'var(--gray-400)'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+            Učitavanje kurseva...
+          </div>
+        ) : courses.length === 0 ? (
+          <div style={{
+            background: 'var(--gray-900)',
+            border: '1px solid var(--gray-800)',
+            borderRadius: '16px',
+            padding: '4rem 2rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>📚</div>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-300)' }}>
+              Niste upisani ni na jedan kurs
+            </h4>
+            <p style={{ color: 'var(--gray-500)', fontSize: '0.9375rem' }}>
+              Sačekajte da vas profesor upiše na kurs
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            {courses.map(course => {
+              const courseTasks = tasks.filter(t => t.course_id === course.id);
+              const completedTasks = courseTasks.filter(t => t.submission != null).length;
+              
+              return (
+                <div key={course.id} style={{
+                  background: 'var(--gray-900)',
+                  border: '1px solid var(--gray-800)',
+                  borderRadius: '16px',
+                  overflow: 'hidden'
+                }}>
+                  {/* Course Header */}
+                  <div style={{
+                    padding: '1.5rem',
+                    borderBottom: '1px solid var(--gray-800)',
+                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1))'
+                  }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-50)' }}>
+                      📚 {course.name}
+                    </h4>
+                    <p style={{ margin: '0 0 0.75rem 0', color: 'var(--gray-400)', fontSize: '0.9375rem' }}>
+                      {course.description}
+                    </p>
+                    {course.professor && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--gray-500)', fontSize: '0.875rem' }}>
+                        <span>👨‍🏫</span>
+                        <span>{course.professor.first_name} {course.professor.last_name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Course Content */}
+                  <div style={{ padding: '1.5rem' }}>
+                    {/* Statistics */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '1rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      <div style={{
+                        background: 'var(--gray-800)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--primary-400)', marginBottom: '0.25rem' }}>
+                          {courseTasks.length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                          Ukupno zadataka
+                        </div>
+                      </div>
+                      <div style={{
+                        background: 'var(--gray-800)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#10b981', marginBottom: '0.25rem' }}>
+                          {completedTasks}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                          Predato
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Materials Section */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', fontWeight: '600', color: 'var(--gray-300)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        📄 Materijali
+                      </h5>
+                      {course.material_path ? (
+                        <div style={{
+                          padding: '1rem',
+                          background: 'var(--gray-800)',
+                          borderRadius: '12px',
+                          border: '1px solid var(--gray-700)'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '8px',
+                              background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '1.25rem',
+                              flexShrink: 0
+                            }}>
+                              📕
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: '500', fontSize: '0.9375rem', color: 'var(--gray-200)', marginBottom: '0.125rem' }}>
+                                {course.material_name || 'Materijal za kurs'}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                                PDF dokument
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => downloadMaterial(course.id)}
+                            className="btn btn-primary"
+                            style={{ width: '100%' }}
+                          >
+                            ⬇️ Preuzmi materijal
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{
+                          padding: '1rem',
+                          background: 'var(--gray-800)',
+                          borderRadius: '12px',
+                          textAlign: 'center',
+                          color: 'var(--gray-500)',
+                          fontSize: '0.875rem'
+                        }}>
+                          Nema dostupnih materijala
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tasks Preview */}
+                    {courseTasks.length > 0 && (
+                      <div>
+                        <h5 style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', fontWeight: '600', color: 'var(--gray-300)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          📝 Zadaci iz ovog kursa
+                        </h5>
+                        <div style={{ display: 'grid', gap: '0.75rem' }}>
+                          {courseTasks.slice(0, 3).map(task => (
+                            <div key={task.id} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem',
+                              background: 'var(--gray-800)',
+                              borderRadius: '8px'
+                            }}>
+                              <div style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                background: task.submission ? '#10b981' : '#f59e0b',
+                                flexShrink: 0
+                              }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--gray-200)' }}>
+                                  {task.title}
+                                </div>
+                              </div>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '6px',
+                                background: task.submission ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                                color: task.submission ? '#10b981' : '#f59e0b',
+                                fontWeight: '500',
+                                flexShrink: 0
+                              }}>
+                                {task.submission ? 'Predato' : 'Za predaju'}
+                              </span>
+                            </div>
+                          ))}
+                          {courseTasks.length > 3 && (
+                            <div style={{
+                              padding: '0.5rem',
+                              textAlign: 'center',
+                              color: 'var(--gray-500)',
+                              fontSize: '0.8125rem'
+                            }}>
+                              +{courseTasks.length - 3} još zadataka
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

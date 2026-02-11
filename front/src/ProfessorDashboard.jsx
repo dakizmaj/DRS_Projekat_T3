@@ -136,6 +136,46 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
     }
   };
 
+  const downloadMaterial = async (courseId, materialName) => {
+    try {
+      const response = await api.get(`/courses/${courseId}/material/download`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', materialName || `materijal_kurs_${courseId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Error downloading material:', e);
+      alert('Greška pri preuzimanju materijala');
+    }
+  };
+
+  const downloadSubmission = async (submissionId, fileName) => {
+    try {
+      const response = await api.get(`/tasks/submissions/${submissionId}/download`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName || `submission_${submissionId}.py`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Error downloading submission:', e);
+      alert('Greška pri preuzimanju predaje');
+    }
+  };
+
   const startEdit = () => {
     setEditMode(true);
     setEditForm({ name: selectedCourse.name, description: selectedCourse.description || '' });
@@ -396,12 +436,28 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                         padding: '1rem'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                          {sub.student.profile_image ? (
+                            <img 
+                              src={`http://127.0.0.1:5000/users/profile_images/${sub.student.profile_image}`}
+                              alt={`${sub.student.first_name} ${sub.student.last_name}`}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                              style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '8px',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : null}
                           <div style={{
                             width: '36px',
                             height: '36px',
                             borderRadius: '8px',
                             background: 'linear-gradient(135deg, var(--primary-500), var(--primary-700))',
-                            display: 'flex',
+                            display: sub.student.profile_image ? 'none' : 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '0.875rem',
@@ -420,25 +476,28 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                           </div>
                         </div>
 
-                        {/* Download link za .py fajl */}
-                        <a
-                          href={`http://127.0.0.1:5000/tasks/submissions/${sub.id}/download`}
-                          download
+                        {/* Download dugme za .py fajl */}
+                        <button
+                          onClick={() => {
+                            const fileName = sub.file_path?.split('/').pop() || sub.file_path?.split('\\').pop() || 'resenje.py';
+                            downloadSubmission(sub.id, fileName);
+                          }}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.5rem',
                             padding: '0.5rem 0.75rem',
                             background: 'var(--gray-700)',
+                            border: 'none',
                             borderRadius: '8px',
                             color: 'var(--primary-400)',
-                            textDecoration: 'none',
                             fontSize: '0.8125rem',
-                            marginBottom: '0.75rem'
+                            marginBottom: '0.75rem',
+                            cursor: 'pointer'
                           }}
                         >
                           📄 {sub.file_path?.split('/').pop() || sub.file_path?.split('\\').pop() || 'resenje.py'} - Preuzmi
-                        </a>
+                        </button>
 
                         {sub.grade !== null ? (
                           <div style={{ padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
@@ -522,12 +581,21 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600', color: 'var(--gray-50)' }}>
           Moji kursevi
         </h3>
-        <button
-          onClick={() => setShowNewCourseForm(!showNewCourseForm)}
-          className="btn btn-primary"
-        >
-          {showNewCourseForm ? '✕ Zatvori' : '+ Novi kurs'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            onClick={fetchCourses}
+            className="btn btn-secondary"
+            title="Osvežite listu kurseva"
+          >
+            🔄 Osveži
+          </button>
+          <button
+            onClick={() => setShowNewCourseForm(!showNewCourseForm)}
+            className="btn btn-primary"
+          >
+            {showNewCourseForm ? '✕ Zatvori' : '+ Novi kurs'}
+          </button>
+        </div>
       </div>
 
       {/* New Course Form */}
@@ -724,7 +792,7 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                         borderRadius: '12px',
                         padding: '1rem',
                         marginBottom: '1rem',
-                        maxHeight: '200px',
+                        maxHeight: '300px',
                         overflowY: 'auto'
                       }}>
                         {allStudents.map(student => {
@@ -736,11 +804,16 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                padding: '0.5rem',
+                                gap: '0.75rem',
+                                padding: '0.75rem',
+                                marginBottom: '0.5rem',
                                 cursor: isEnrolled ? 'not-allowed' : 'pointer',
                                 opacity: isEnrolled ? 0.5 : 1,
                                 borderRadius: '8px',
-                                background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                                background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                border: '1px solid',
+                                borderColor: isSelected ? 'var(--primary-500)' : 'transparent',
+                                transition: 'all 0.2s ease'
                               }}
                             >
                               <input
@@ -748,16 +821,75 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                                 checked={isSelected}
                                 onChange={() => !isEnrolled && toggleStudentSelection(student.id)}
                                 disabled={isEnrolled}
-                                style={{ marginRight: '0.75rem' }}
+                                style={{ 
+                                  width: '18px',
+                                  height: '18px',
+                                  cursor: isEnrolled ? 'not-allowed' : 'pointer'
+                                }}
                               />
-                              <span style={{ color: 'var(--gray-200)' }}>
-                                {student.first_name} {student.last_name}
-                              </span>
-                              <span style={{ marginLeft: '0.5rem', color: 'var(--gray-500)', fontSize: '0.8125rem' }}>
-                                ({student.email})
-                              </span>
+                              {student.profile_image ? (
+                                <img
+                                  src={`http://127.0.0.1:5000/users/profile_images/${student.profile_image}`}
+                                  alt={`${student.first_name} ${student.last_name}`}
+                                  style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '8px',
+                                    objectFit: 'cover',
+                                    flexShrink: 0
+                                  }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                display: student.profile_image ? 'none' : 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1.125rem',
+                                fontWeight: '600',
+                                color: 'white',
+                                flexShrink: 0
+                              }}>
+                                {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ 
+                                  color: 'var(--gray-200)',
+                                  fontWeight: '500',
+                                  fontSize: '0.9375rem',
+                                  marginBottom: '0.125rem'
+                                }}>
+                                  {student.first_name} {student.last_name}
+                                </div>
+                                <div style={{ 
+                                  color: 'var(--gray-500)',
+                                  fontSize: '0.8125rem',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {student.email}
+                                </div>
+                              </div>
                               {isEnrolled && (
-                                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#10b981' }}>✓ Upisan</span>
+                                <span style={{ 
+                                  padding: '0.25rem 0.625rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  color: '#10b981',
+                                  background: 'rgba(16, 185, 129, 0.1)',
+                                  flexShrink: 0
+                                }}>
+                                  ✓ Upisan
+                                </span>
                               )}
                             </label>
                           );
@@ -765,8 +897,8 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                         <button
                           onClick={enrollStudents}
                           disabled={selectedStudentIds.length === 0}
-                          className="btn btn-primary btn-sm"
-                          style={{ marginTop: '0.75rem' }}
+                          className="btn btn-primary"
+                          style={{ marginTop: '0.75rem', width: '100%' }}
                         >
                           Dodaj izabrane ({selectedStudentIds.length})
                         </button>
@@ -783,12 +915,28 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                           background: 'var(--gray-800)',
                           borderRadius: '8px'
                         }}>
+                          {s.profile_image ? (
+                            <img 
+                              src={`http://127.0.0.1:5000/users/profile_images/${s.profile_image}`}
+                              alt={`${s.first_name} ${s.last_name}`}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : null}
                           <div style={{
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
                             background: 'linear-gradient(135deg, #10b981, #059669)',
-                            display: 'flex',
+                            display: s.profile_image ? 'none' : 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '0.75rem',
@@ -841,23 +989,48 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                     )}
 
                     {selectedCourse.material_path && (
-                      <a
-                        href={`http://127.0.0.1:5000/courses/${selectedCourse.id}/material/download`}
-                        download
-                        style={{
-                          display: 'inline-flex',
+                      <div style={{
+                        padding: '1rem',
+                        background: 'var(--gray-800)',
+                        borderRadius: '12px',
+                        border: '1px solid var(--gray-700)'
+                      }}>
+                        <div style={{
+                          display: 'flex',
                           alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.75rem 1rem',
-                          background: 'var(--gray-800)',
-                          borderRadius: '8px',
-                          color: 'var(--primary-400)',
-                          textDecoration: 'none',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        📄 {selectedCourse.material_path.split('/').pop()} - Preuzmi
-                      </a>
+                          gap: '0.75rem',
+                          marginBottom: '0.75rem'
+                        }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.125rem',
+                            flexShrink: 0
+                          }}>
+                            📕
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: '500', fontSize: '0.9375rem', color: 'var(--gray-200)', marginBottom: '0.125rem' }}>
+                              {selectedCourse.material_name || 'Materijal za kurs'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                              PDF dokument
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => downloadMaterial(selectedCourse.id, selectedCourse.material_name)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ width: '100%' }}
+                        >
+                          ⬇️ Preuzmi materijal
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -1007,25 +1180,28 @@ export default function ProfessorDashboard({ user, activeView = 'dashboard' }) {
                         </div>
                       </div>
 
-                      {/* Download link za .py fajl */}
-                      <a
-                        href={`http://127.0.0.1:5000/tasks/submissions/${sub.id}/download`}
-                        download
+                      {/* Download dugme za .py fajl */}
+                      <button
+                        onClick={() => {
+                          const fileName = sub.file_path?.split('/').pop() || sub.file_path?.split('\\').pop() || 'resenje.py';
+                          downloadSubmission(sub.id, fileName);
+                        }}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '0.5rem',
                           padding: '0.5rem 0.75rem',
                           background: 'var(--gray-700)',
+                          border: 'none',
                           borderRadius: '8px',
                           color: 'var(--primary-400)',
-                          textDecoration: 'none',
                           fontSize: '0.8125rem',
-                          marginBottom: '0.75rem'
+                          marginBottom: '0.75rem',
+                          cursor: 'pointer'
                         }}
                       >
                         📄 {sub.file_path?.split('/').pop() || sub.file_path?.split('\\').pop() || 'resenje.py'} - Preuzmi
-                      </a>
+                      </button>
 
                       {sub.grade !== null ? (
                         <div style={{

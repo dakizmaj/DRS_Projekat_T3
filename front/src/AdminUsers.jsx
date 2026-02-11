@@ -31,7 +31,10 @@ export default function AdminUsers({ activeView = 'dashboard' }) {
     password: '',
     role: 'student',
     date_of_birth: '2000-01-01',
-    gender: 'M'
+    gender: 'M',
+    country: '',
+    street: '',
+    street_number: ''
   });
 
   // Courses
@@ -108,7 +111,10 @@ export default function AdminUsers({ activeView = 'dashboard' }) {
         password: '',
         role: 'student',
         date_of_birth: '2000-01-01',
-        gender: 'M'
+        gender: 'M',
+        country: '',
+        street: '',
+        street_number: ''
       });
       setShowAddForm(false);
       fetchUsers();
@@ -437,6 +443,49 @@ export default function AdminUsers({ activeView = 'dashboard' }) {
                       value={form.date_of_birth}
                       onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))}
                       required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-300)' }}>
+                      Pol
+                    </label>
+                    <select
+                      value={form.gender}
+                      onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}
+                      required
+                    >
+                      <option value="M">Muški</option>
+                      <option value="F">Ženski</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-300)' }}>
+                      Država
+                    </label>
+                    <input
+                      placeholder="Unesite državu"
+                      value={form.country}
+                      onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-300)' }}>
+                      Ulica
+                    </label>
+                    <input
+                      placeholder="Unesite ulicu"
+                      value={form.street}
+                      onChange={e => setForm(f => ({ ...f, street: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--gray-300)' }}>
+                      Broj
+                    </label>
+                    <input
+                      placeholder="Broj ulice"
+                      value={form.street_number}
+                      onChange={e => setForm(f => ({ ...f, street_number: e.target.value }))}
                     />
                   </div>
                   <div>

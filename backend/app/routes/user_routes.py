@@ -131,7 +131,8 @@ def list_students():
             "first_name": s.first_name,
             "last_name": s.last_name,
             "email": s.email,
-            "role": s.role
+            "role": s.role,
+            "profile_image": s.profile_image
         } for s in students
     ])
 

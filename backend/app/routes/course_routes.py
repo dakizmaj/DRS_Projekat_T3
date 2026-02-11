@@ -11,6 +11,7 @@ from app.services.course_service import (
     get_course_by_id,
     enroll_student,
     get_course_students,
+    get_student_courses,
     upload_course_material
 )
 from app.sockets.admin_socket import notify_new_course
@@ -59,7 +60,32 @@ def my_courses():
             "name": c.name,
             "description": c.description,
             "status": c.status,
-            "material_path": c.material_path
+            "material_path": c.material_path,
+            "material_name": c.material_name
+        } for c in courses
+    ])
+
+
+# =========================
+# STUDENT → vidi svoje upisane kurseve
+# =========================
+@course_bp.route("/enrolled", methods=["GET"])
+@login_required
+@role_required("student")
+def enrolled_courses():
+    courses = get_student_courses(request.user.id)
+    return jsonify([
+        {
+            "id": c.id,
+            "name": c.name,
+            "description": c.description,
+            "material_path": c.material_path,
+            "material_name": c.material_name,
+            "professor": {
+                "id": c.professor.id,
+                "first_name": c.professor.first_name,
+                "last_name": c.professor.last_name
+            } if c.professor else None
         } for c in courses
     ])
 
@@ -206,7 +232,8 @@ def list_students(course_id):
             "id": s.id,
             "first_name": s.first_name,
             "last_name": s.last_name,
-            "email": s.email
+            "email": s.email,
+            "profile_image": s.profile_image
         } for s in students
     ]), 200
 

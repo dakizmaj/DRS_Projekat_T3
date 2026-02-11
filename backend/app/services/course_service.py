@@ -142,18 +142,35 @@ def get_course_students(course_id):
     return [e.student for e in enrollments]
 
 
+def get_student_courses(student_id):
+    """Vraća sve kurseve na koje je student upisan"""
+    enrollments = Enrollment.query.filter_by(student_id=student_id).all()
+    return [e.course for e in enrollments if e.course.status == 'accepted']
+
+
 def upload_course_material(course_id, file, filename):
+    import uuid
     upload_dir = os.path.join('uploads', 'materials')
     os.makedirs(upload_dir, exist_ok=True)
     
-    # Dodaj course_id u ime fajla da bude jedinstveno
-    file_path = os.path.join(upload_dir, f"{course_id}_{filename}")
-    file.save(file_path)
+    # Dodaj UUID za jedinstveno ime fajla
+    file_ext = os.path.splitext(filename)[1]  # Očuvaj ekstenziju (.pdf)
+    unique_filename = f"{course_id}_{uuid.uuid4().hex}{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
     
     # Ažuriraj course sa putanjom do materijala
     course = Course.query.get(course_id)
     if course:
+        # Obriši stari materijal ako postoji
+        if course.material_path and os.path.exists(course.material_path):
+            try:
+                os.remove(course.material_path)
+            except:
+                pass
+        
         course.material_path = file_path
+        course.material_name = filename  # Sačuvaj originalno ime
         db.session.commit()
     
+    file.save(file_path)
     return file_path

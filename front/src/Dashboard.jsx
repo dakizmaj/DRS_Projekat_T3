@@ -98,6 +98,7 @@ export default function Dashboard() {
     if (userState.role === 'student') {
       return [
         ...baseItems,
+        { id: 'courses', icon: '📚', label: 'Moji kursevi' },
         { id: 'tasks', icon: '📝', label: 'Moji zadaci' },
         { id: 'grades', icon: '📈', label: 'Ocene' }
       ];
@@ -195,7 +196,7 @@ export default function Dashboard() {
           <div className="sidebar-avatar">
             {userState.profile_image ? (
               <img
-                src={`http://127.0.0.1:5000/users/profile_images/${userState.profile_image}`}
+                src={`http://127.0.0.1:5000/users/profile_images/${userState.profile_image}?t=${Date.now()}`}
                 alt="Avatar"
                 onError={(e) => {
                   e.target.style.display = 'none';
